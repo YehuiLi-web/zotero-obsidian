@@ -190,7 +190,7 @@ tags:
 
     assert.include(importedExtra, "reading_status: summarized");
     assert.include(importedExtra, "rating: 5");
-    assert.sameMembers(importedTags, ["manual-tag", "project-x"]);
+    assert.sameMembers(importedTags, ["manual-tag"]);
     assert.notInclude(importedTags, "legacy-tag");
     assert.notInclude(importedTags, "stale-tag");
 
@@ -203,10 +203,7 @@ tags:
 
     assert.equal(exportedStatus.meta?.reading_status, "summarized");
     assert.equal(exportedStatus.meta?.rating, 5);
-    assert.sameMembers(exportedStatus.meta?.zotero_tags || [], [
-      "manual-tag",
-      "project-x",
-    ]);
+    assert.sameMembers(exportedStatus.meta?.zotero_tags || [], ["manual-tag"]);
     assert.sameMembers(exportedStatus.meta?.tags || [], [
       "literature",
       "zotero",
@@ -219,6 +216,56 @@ tags:
       historyEntries.map((entry: SyncHistoryEntry) => entry.reason),
       "manual-import",
     );
+
+    await Zotero.Items.erase(note.id);
+    await Zotero.Items.erase(topItem.id);
+  });
+
+  it("api.$import.fromMD ignores stale mirrored tags when zotero_tags changed", async function () {
+    const { topItem, note } = await createManagedObsidianNote();
+    const tempDir = await getTempDirectory();
+    const filePath = PathUtils.join(tempDir, "managed-import-stale-tags.md");
+
+    topItem.addTag("legacy-tag", 0);
+    await topItem.saveTx();
+
+    const markdown = `---
+bridge_managed: true
+zotero_key: ${topItem.key}
+zotero_note_key: ${note.key}
+zotero_tags:
+  - manual-tag
+tags:
+  - literature
+  - zotero
+  - legacy-tag
+---
+
+<!-- ${config.addonRef}:BEGIN GENERATED -->
+
+# Managed Sync Article
+
+<!-- ${config.addonRef}:END GENERATED -->
+
+<!-- ${config.addonRef}:BEGIN USER -->
+
+Body
+
+<!-- ${config.addonRef}:END USER -->
+`;
+
+    await Zotero.File.putContentsAsync(filePath, markdown);
+
+    await addon.api.$import.fromMD(filePath, {
+      noteId: note.id,
+      ignoreVersion: true,
+    });
+
+    const importedTags = Zotero.Items.get(topItem.id)
+      .getTags()
+      .map((tag) => tag.tag);
+
+    assert.sameMembers(importedTags, ["manual-tag"]);
 
     await Zotero.Items.erase(note.id);
     await Zotero.Items.erase(topItem.id);

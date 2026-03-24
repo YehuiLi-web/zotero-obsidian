@@ -160,15 +160,39 @@ const DEFAULT_TEMPLATES = [
     }
     return [key + ":", ...items.map((value) => "  - " + yamlQuote(value))].join("\\n");
   };
-  const makeLibraryLink = (item) => {
+  const buildLibraryURI = (action, item) => {
     if (!item?.key) {
       return "";
     }
     if (item.libraryID === 1) {
-      return "zotero://open/library/items/" + item.key;
+      return "zotero://" + action + "/library/items/" + item.key;
     }
     const groupID = Zotero.Libraries.get(item.libraryID).id;
-    return "zotero://open/groups/" + groupID + "/items/" + item.key;
+    return "zotero://" + action + "/groups/" + groupID + "/items/" + item.key;
+  };
+  const makeItemLink = (item) => {
+    return buildLibraryURI("select", item);
+  };
+  const buildCollectionItemLink = (item, collection) => {
+    const collectionKey = cleanInline(collection?.key || "");
+    if (!item?.key || !collectionKey) {
+      return makeItemLink(item);
+    }
+    if (item.libraryID === 1) {
+      return "zotero://select/library/collections/" + collectionKey + "/items/" + item.key;
+    }
+    const groupID = Zotero.Libraries.get(item.libraryID).id;
+    return "zotero://select/groups/" + groupID + "/collections/" + collectionKey + "/items/" + item.key;
+  };
+  const getBestItemLink = async (item) => {
+    if (!item?.id) {
+      return makeItemLink(item);
+    }
+    const collections = await Zotero.Collections.getCollectionsContainingItems([item.id]);
+    return buildCollectionItemLink(item, Array.isArray(collections) ? collections[0] : null);
+  };
+  const makeAttachmentLink = (item) => {
+    return buildLibraryURI("open", item);
   };
   const getBestAttachmentLink = async (item) => {
     if (!item || typeof item.getBestAttachment !== "function") {
@@ -178,7 +202,7 @@ const DEFAULT_TEMPLATES = [
     if (!attachment) {
       return "";
     }
-    return makeLibraryLink(attachment);
+    return makeAttachmentLink(attachment);
   };
   const extraMap = parseExtraMap(getFieldSafe("extra"));
   const title = firstValue(getFieldSafe("title"), topItem.key);
@@ -221,7 +245,7 @@ const DEFAULT_TEMPLATES = [
     getFieldSafe("citationKey"),
     extraMap.citationKey,
   );
-  const itemLink = makeLibraryLink(topItem);
+  const itemLink = await getBestItemLink(topItem);
   const pdfLink = await getBestAttachmentLink(topItem);
   const firstAuthor = creators.length ? creators[0] : "";
   const citationLabel = [firstAuthor, year].filter(Boolean).join(", ");

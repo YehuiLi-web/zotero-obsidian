@@ -13,11 +13,11 @@ exports.openTemplatePicker = openTemplatePicker;
 const package_json_1 = require("../../package.json");
 function openTemplatePicker() {
     return __awaiter(this, arguments, void 0, function* (options = {}) {
-        const { multiSelect = false, filterPrefix = "", selected = [] } = options;
-        const templates = addon.api.template
-            .getTemplateKeys()
-            .filter((template) => !addon.api.template.SYSTEM_TEMPLATE_NAMES.includes(template) &&
-            (!filterPrefix || template.startsWith(filterPrefix)));
+        const { multiSelect = false, filterPrefix = "", selected = [], templates: providedTemplates, } = options;
+        const templates = providedTemplates && providedTemplates.length
+            ? [...providedTemplates]
+            : addon.api.template.getTemplateKeys().filter((template) => !addon.api.template.SYSTEM_TEMPLATE_NAMES.includes(template) &&
+                (!filterPrefix || template.startsWith(filterPrefix)));
         const args = {
             templates,
             multiSelect,

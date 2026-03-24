@@ -126,6 +126,10 @@ function note2md(noteItem_1, dir_1) {
         yield processN2MRehypeNoteLinkNodes(getN2MRehypeNoteLinkNodes(rehype), dir, options.keepNoteLink ? NodeMode.default : NodeMode.direct);
         yield processN2MRehypeImageNodes(getN2MRehypeImageNodes(rehype), noteItem.libraryID, options.attachmentDir ||
             (0, str_1.jointPath)(dir, (0, prefs_1.getPref)("syncAttachmentFolder")), options.attachmentFolder || (0, prefs_1.getPref)("syncAttachmentFolder"), options.skipSavingImages, false, NodeMode.direct);
+        if (!options.skipSavingImages) {
+            yield processN2MRehypeInlineImageNodes(getN2MRehypeInlineImageNodes(rehype), options.attachmentDir ||
+                (0, str_1.jointPath)(dir, (0, prefs_1.getPref)("syncAttachmentFolder")), options.attachmentFolder || (0, prefs_1.getPref)("syncAttachmentFolder"), NodeMode.direct);
+        }
         const remark = yield rehype2remark(rehype);
         if (!remark) {
             throw new Error("Parsing Error: Rehype2Remark");
@@ -195,6 +199,9 @@ function note2latex(noteItem_1, dir_1) {
         yield processN2LRehypeListNodes(getN2LRehypeListNodes(rehype));
         yield processN2LRehypeTableNodes(getN2LRehypeTableNodes(rehype));
         yield processN2LRehypeImageNodes(getN2MRehypeImageNodes(rehype), noteItem.libraryID, (0, str_1.jointPath)(dir, (0, prefs_1.getPref)("syncAttachmentFolder")), options.skipSavingImages, false, NodeMode.direct);
+        if (!options.skipSavingImages) {
+            yield processN2MRehypeInlineImageNodes(getN2MRehypeInlineImageNodes(rehype), (0, str_1.jointPath)(dir, (0, prefs_1.getPref)("syncAttachmentFolder")), (0, prefs_1.getPref)("syncAttachmentFolder"), NodeMode.direct);
+        }
         const remark = yield rehype2remark(rehype);
         if (!remark) {
             throw new Error("Parsing Error: Rehype2Remark");
@@ -355,6 +362,19 @@ function getN2MRehypeImageNodes(rehype) {
         return node.type === "element" &&
             node.tagName === "img" &&
             ((_a = node.properties) === null || _a === void 0 ? void 0 : _a.dataAttachmentKey);
+    }, (node) => nodes.push(node));
+    return new Array(...new Set(nodes));
+}
+function getN2MRehypeInlineImageNodes(rehype) {
+    const nodes = [];
+    (0, unist_util_visit_1.visit)(rehype, (node) => {
+        var _a, _b;
+        return node.type === "element" &&
+            node.tagName === "img" &&
+            !((_a = node.properties) === null || _a === void 0 ? void 0 : _a.dataAttachmentKey) &&
+            ((_b = node.properties) === null || _b === void 0 ? void 0 : _b.src) &&
+            typeof node.properties.src === "string" &&
+            node.properties.src.startsWith("data:image/");
     }, (node) => nodes.push(node));
     return new Array(...new Set(nodes));
 }
@@ -591,6 +611,53 @@ function processN2MRehypeImageNodes(nodes_1, libraryID_1, dir_1) {
         }
     });
 }
+function processN2MRehypeInlineImageNodes(nodes_1, dir_1) {
+    return __awaiter(this, arguments, void 0, function* (nodes, dir, relativeDir = "", mode = NodeMode.default) {
+        if (!nodes.length) {
+            return;
+        }
+        for (const node of nodes) {
+            const src = node.properties.src;
+            const match = src.match(/^data:image\/(\w+);base64,(.+)$/);
+            if (!match) {
+                continue;
+            }
+            const ext = match[1] === "jpeg" ? "jpg" : match[1];
+            const hash = Zotero.Utilities.Internal.md5(match[2], false).slice(0, 12);
+            const fileName = `inline-${hash}.${ext}`;
+            const absPath = (0, str_1.formatPath)(`${dir}/${fileName}`);
+            try {
+                if (!(yield (0, str_1.fileExists)(absPath))) {
+                    const binaryStr = atob(match[2]);
+                    const bytes = new Uint8Array(binaryStr.length);
+                    for (let i = 0; i < binaryStr.length; i++) {
+                        bytes[i] = binaryStr.charCodeAt(i);
+                    }
+                    yield Zotero.File.createDirectoryIfMissingAsync(dir);
+                    yield IOUtils.write(absPath, bytes);
+                }
+                let newFile = (0, str_1.formatPath)((0, str_1.jointPath)(relativeDir || "", fileName));
+                if (Zotero.isWin) {
+                    newFile = Zotero.File.normalizeToUnix(newFile);
+                }
+                node.properties.src = newFile;
+                if (mode === NodeMode.direct) {
+                    const newChild = (0, hastscript_1.h)("span");
+                    replace(newChild, node);
+                    newChild.properties.ztype = "zimage";
+                    node.properties.alt = (0, hast_util_to_html_1.toHtml)(newChild);
+                    const width = node.properties.width;
+                    if (width) {
+                        node.properties.alt = `${node.properties.alt} | ${width}`;
+                    }
+                }
+            }
+            catch (e) {
+                ztoolkit.log("[note2md] processN2MRehypeInlineImageNodes failed", e);
+            }
+        }
+    });
+}
 function getM2NRehypeAnnotationNodes(rehype) {
     const nodes = [];
     (0, unist_util_visit_1.visit)(rehype, (node) => { var _a; return node.type === "element" && ((_a = node.properties) === null || _a === void 0 ? void 0 : _a.dataAnnotation); }, (node) => nodes.push(node));
@@ -715,6 +782,40 @@ function processM2NRehypeNoteLinkNodes(nodes) {
         delete node.properties.ztype;
     }
 }
+function resolveImagePath(rawSrc, fileDir) {
+    return __awaiter(this, void 0, void 0, function* () {
+        // 1. Try relative to the markdown file directory
+        let resolved = PathUtils.isAbsolute(rawSrc)
+            ? rawSrc
+            : (0, str_1.jointPath)(fileDir, rawSrc);
+        if (yield (0, str_1.fileExists)(resolved)) {
+            return resolved;
+        }
+        // 2. Try additional search directories from Obsidian Bridge settings
+        const vaultRoot = String((0, prefs_1.getPref)("obsidian.vaultRoot") || "").trim();
+        const assetsDir = String((0, prefs_1.getPref)("obsidian.assetsDir") || "").trim();
+        const fileName = rawSrc.replace(/\\/g, "/").split("/").pop() || "";
+        if (!fileName) {
+            return "";
+        }
+        const searchDirs = [
+            // vault root (Obsidian default paste location)
+            vaultRoot,
+            // assetsDir (plugin's configured resource directory)
+            assetsDir,
+            // common Obsidian attachment folder patterns
+            vaultRoot ? (0, str_1.jointPath)(vaultRoot, "attachments") : "",
+            vaultRoot ? (0, str_1.jointPath)(vaultRoot, "assets") : "",
+        ].filter(Boolean);
+        for (const dir of searchDirs) {
+            const candidate = (0, str_1.jointPath)(dir, fileName);
+            if (yield (0, str_1.fileExists)(candidate)) {
+                return candidate;
+            }
+        }
+        return "";
+    });
+}
 function processM2NRehypeImageNodes(nodes_1, noteItem_1, fileDir_1) {
     return __awaiter(this, arguments, void 0, function* (nodes, noteItem, fileDir, isImport = false) {
         if (!nodes.length || (isImport && !noteItem)) {
@@ -736,20 +837,23 @@ function processM2NRehypeImageNodes(nodes_1, noteItem_1, fileDir_1) {
                             ? "url"
                             : "file";
                     if (srcType === "file") {
-                        if (!PathUtils.isAbsolute(src)) {
-                            src = (0, str_1.jointPath)(fileDir, src);
-                        }
-                        if (!(yield (0, str_1.fileExists)(src))) {
+                        const resolvedSrc = yield resolveImagePath(src, fileDir);
+                        if (!resolvedSrc) {
                             ztoolkit.log("parse image, path invalid", src);
                             continue;
                         }
+                        src = resolvedSrc;
                     }
                     const key = yield (0, note_1.importImageToNote)(noteItem, src, srcType);
                     node.properties.dataAttachmentKey = key;
                 }
+                delete node.properties.src;
+                node.properties.ztype && delete node.properties.ztype;
             }
-            delete node.properties.src;
-            node.properties.ztype && delete node.properties.ztype;
+            else {
+                delete node.properties.src;
+                node.properties.ztype && delete node.properties.ztype;
+            }
         }
     });
 }

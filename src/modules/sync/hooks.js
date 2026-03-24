@@ -134,7 +134,9 @@ function callSyncing() {
                     progress: ((i - 1) / items.length) * 100,
                 });
                 const itemIDs = toExport[filepath];
-                yield addon.api.$export.syncMDBatch(filepath, itemIDs, itemIDs.map((id) => mdStatusMap[id].meta));
+                yield addon.api.$export.syncMDBatch(filepath, itemIDs, itemIDs.map((id) => mdStatusMap[id].meta), {
+                    historyReason: reason,
+                });
                 i += 1;
             }
             i = 1;
@@ -146,9 +148,15 @@ function callSyncing() {
                 });
                 const item = Zotero.Items.get(syncStatus.itemID);
                 const filepath = (0, str_1.jointPath)(syncStatus.path, syncStatus.filename);
-                yield addon.api.$import.fromMD(filepath, { noteId: item.id });
+                yield addon.api.$import.fromMD(filepath, {
+                    noteId: item.id,
+                    historyReason: reason,
+                });
                 // Update md file to keep the metadata synced
-                yield addon.api.$export.syncMDBatch(syncStatus.path, [item.id], [mdStatusMap[item.id].meta]);
+                yield addon.api.$export.syncMDBatch(syncStatus.path, [item.id], [mdStatusMap[item.id].meta], {
+                    historyReason: `${reason}-metadata-refresh`,
+                    recordHistory: false,
+                });
                 i += 1;
             }
             i = 1;
@@ -194,11 +202,20 @@ function doCompare(noteItem, mdStatus) {
         let noteAhead = false;
         const md5 = Zotero.Utilities.Internal.md5(mdStatus.content, false);
         const noteMd5 = Zotero.Utilities.Internal.md5(noteItem.getNote(), false);
+        const frontmatterMd5 = mdStatus.meta
+            ? Zotero.Utilities.Internal.md5(JSON.stringify(mdStatus.meta), false)
+            : "";
         const managedSourceHash = addon.api.obsidian.isManagedNote(noteItem)
             ? yield addon.api.obsidian.getManagedSourceHash(noteItem)
             : "";
         // MD5 doesn't match (md side change)
         if (md5 !== syncStatus.md5) {
+            MDAhead = true;
+        }
+        // Frontmatter changed (md side change, e.g. tags/status/rating edits)
+        if (frontmatterMd5 &&
+            syncStatus.frontmatterMd5 &&
+            frontmatterMd5 !== syncStatus.frontmatterMd5) {
             MDAhead = true;
         }
         // MD5 doesn't match (note side change)

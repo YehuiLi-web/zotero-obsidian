@@ -196,3 +196,5 @@ userGuide-workspaceNoteInfo-desc = Du kannst die Tags, Verbindungen und Links de
 userGuide-finish-title = Wir sind fertig!
 userGuide-finish-desc = Viel Spaß beim Notieren mit Better Notes!
     Du kannst dieses Tutorial über das Hilfe-Menü jederzeit erneut starten.
+obsidian-translateMissingMetadata-unavailable = Missing translation autofill was skipped because Translate for Zotero is not installed or its API is unavailable.
+obsidian-translateMissingMetadata-failed = Missing translation autofill failed for at least one item. Continuing sync with the original content. Detail: { $detail }

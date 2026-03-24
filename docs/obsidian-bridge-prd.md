@@ -330,7 +330,9 @@ USER 区是用户在 Obsidian 中真正维护的空间。
 
 - 系统标签固定包含 `literature` 和 `zotero`
 - Zotero tags 可以同步到 `zotero_tags`
-- 用户工作流标签可放入 `tags`
+- `tags` 主要用于 Obsidian 原生标签展示，可包含系统标签与用户工作流标签
+- 当 `zotero_tags` 存在时，回写 Zotero 只认 `zotero_tags`
+- 只有在缺少 `zotero_tags` 的兼容场景下，才回退使用 `tags`
 - 回写 Zotero 时，需要排除系统标签，避免误删或误写
 
 状态规则必须固定为：
@@ -760,8 +762,11 @@ USER 区是用户在 Obsidian 中真正维护的空间。
 - `reading_status`
 - `status`
 - `rating`
-- `tags`
 - `zotero_tags`
+
+兼容规则：
+
+- 若缺少 `zotero_tags`，可回退使用 `tags`
 
 ### 回写原则
 
@@ -792,8 +797,10 @@ USER 区是用户在 Obsidian 中真正维护的空间。
 ### 标签规则
 
 1. `literature`、`zotero` 属于系统标签，回写时不能作为普通用户标签误操作。
-2. `tags` 与 `zotero_tags` 在回写时可以做合集，但必须排除系统标签。
-3. 删除标签时要小心，只移除不在期望列表里的用户标签。
+2. `zotero_tags` 是受管理 note 的标签回写主入口。
+3. `tags` 主要用于 Obsidian 原生标签与工作流展示，不应在 `zotero_tags` 存在时覆盖它。
+4. 仅当缺少 `zotero_tags` 时，才回退使用 `tags` 做兼容导回。
+5. 删除标签时要小心，只移除不在期望列表里的用户标签。
 
 ### 异常规则
 

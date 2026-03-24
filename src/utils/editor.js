@@ -33,11 +33,21 @@ exports.getTextBetween = getTextBetween;
 exports.getTextBetweenLines = getTextBetweenLines;
 exports.isImageAtCursor = isImageAtCursor;
 exports.initEditorPlugins = initEditorPlugins;
+const prosemirror_model_1 = require("prosemirror-model");
 const prosemirror_state_1 = require("prosemirror-state");
 const note_1 = require("./note");
 const prefs_1 = require("./prefs");
 const linkCreator_1 = require("./linkCreator");
 const hint_1 = require("./hint");
+function getSliceFromHTMLFallback(editor, content) {
+    const container = editor._iframeWindow.document.createElement("div");
+    container.innerHTML = content;
+    const fragment = editor._iframeWindow.document.createDocumentFragment();
+    while (container.firstChild) {
+        fragment.appendChild(container.firstChild);
+    }
+    return prosemirror_model_1.DOMParser.fromSchema(getEditorCore(editor).view.state.schema).parseSlice(fragment);
+}
 function insert(editor, content = "", position = "cursor", select) {
     const core = getEditorCore(editor);
     const EditorAPI = getEditorAPI(editor);
@@ -51,18 +61,29 @@ function insert(editor, content = "", position = "cursor", select) {
         position = 0;
     }
     position = Math.max(0, Math.min(position, core.view.state.doc.content.size));
-    core.insertHTML(position, content);
+    const slice = (EditorAPI === null || EditorAPI === void 0 ? void 0 : EditorAPI.getSliceFromHTML(core.view.state, content)) ||
+        getSliceFromHTMLFallback(editor, content);
+    core.view.dispatch(core.view.state.tr.insert(position, slice.content));
     if (select) {
-        const slice = EditorAPI.getSliceFromHTML(core.view.state, content);
-        EditorAPI.refocusEditor(() => {
-            EditorAPI.setSelection(position + slice.content.size, position)(core.view.state, core.view.dispatch);
-        });
+        const from = position;
+        const to = from + slice.content.size;
+        if (EditorAPI) {
+            EditorAPI.refocusEditor(() => {
+                EditorAPI.setSelection(to, from)(core.view.state, core.view.dispatch);
+            });
+            return;
+        }
+        core.view.dispatch(core.view.state.tr.setSelection(prosemirror_state_1.TextSelection.create(core.view.state.tr.doc, to, from)));
     }
 }
 function del(editor, from, to) {
     const core = getEditorCore(editor);
     const EditorAPI = getEditorAPI(editor);
-    EditorAPI.deleteRange(from, to)(core.view.state, core.view.dispatch);
+    if (EditorAPI) {
+        EditorAPI.deleteRange(from, to)(core.view.state, core.view.dispatch);
+        return;
+    }
+    core.view.dispatch(core.view.state.tr.delete(from, to));
 }
 function move(editor, from, to, delta) {
     const core = getEditorCore(editor);

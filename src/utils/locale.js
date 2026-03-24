@@ -10,7 +10,12 @@ const package_json_1 = require("../../package.json");
 function initLocale() {
     const l10n = new (typeof Localization === "undefined"
         ? ztoolkit.getGlobal("Localization")
-        : Localization)([`${package_json_1.config.addonRef}-addon.ftl`], true);
+        : Localization)([
+        `${package_json_1.config.addonRef}-addon.ftl`,
+        `${package_json_1.config.addonRef}-preferences.ftl`,
+        `${package_json_1.config.addonRef}-mainWindow.ftl`,
+        `${package_json_1.config.addonRef}-exportNotes.ftl`,
+    ], true);
     addon.data.locale = {
         current: l10n,
     };

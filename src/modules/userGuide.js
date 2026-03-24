@@ -28,16 +28,16 @@ You can always run the user guide again from menu Help -> Obsidian Bridge User G
 
 ## 📝 Introduction
 
-> Bridge Zotero notes and metadata into your Obsidian workflow.
+> Bridge Zotero 8 notes, metadata, and managed Markdown into your Obsidian workflow.
 
-Obsidian Bridge is a personal Zotero plugin for [Zotero](https://zotero.org).
+Obsidian Bridge for Zotero is a Zotero 8 plugin for [Zotero](https://zotero.org).
 
 It helps you iterate on workflows such as:
 
-- metadata export
-- markdown sync
+- managed markdown sync
+- metadata and frontmatter export
 - template customization
-- field probing
+- dashboard setup
 - Obsidian-friendly note generation
 
 and:

@@ -1,14 +1,19 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.syncSelectedItemsToObsidian = exports.repairObsidianManagedLinks = exports.renderManagedObsidianNoteMarkdown = exports.isManagedObsidianNote = exports.getManagedObsidianSourceHash = exports.getManagedObsidianNoteForItem = exports.getManagedObsidianFileName = exports.extractManagedObsidianUserMarkdown = exports.applyManagedObsidianFrontmatter = exports.setupObsidianDashboards = exports.saveObsidianMetadataPreset = exports.resetObsidianMetadataPreset = exports.refreshObsidianPrefsUI = exports.pickObsidianPath = exports.pickObsidianItemTemplate = void 0;
+exports.syncSelectedItemsToObsidian = exports.repairObsidianManagedLinks = exports.openItemsInObsidian = exports.renderManagedObsidianNoteMarkdown = exports.isManagedObsidianNote = exports.getManagedObsidianSourceHash = exports.getManagedObsidianNoteForItem = exports.getManagedObsidianFileName = exports.extractManagedObsidianUserMarkdown = exports.applyManagedObsidianFrontmatter = exports.initObsidianStorage = exports.writeObsidianConnectionTestFile = exports.setupObsidianDashboards = exports.saveObsidianMetadataPreset = exports.runObsidianSetupWizard = exports.resetObsidianMetadataPreset = exports.refreshObsidianPrefsUI = exports.pickObsidianPath = exports.pickObsidianItemTemplate = exports.maybeAutoRunObsidianSetupWizard = void 0;
 var prefsUI_1 = require("./obsidian/prefsUI");
+Object.defineProperty(exports, "maybeAutoRunObsidianSetupWizard", { enumerable: true, get: function () { return prefsUI_1.maybeAutoRunObsidianSetupWizard; } });
 Object.defineProperty(exports, "pickObsidianItemTemplate", { enumerable: true, get: function () { return prefsUI_1.pickObsidianItemTemplate; } });
 Object.defineProperty(exports, "pickObsidianPath", { enumerable: true, get: function () { return prefsUI_1.pickObsidianPath; } });
 Object.defineProperty(exports, "refreshObsidianPrefsUI", { enumerable: true, get: function () { return prefsUI_1.refreshObsidianPrefsUI; } });
 Object.defineProperty(exports, "resetObsidianMetadataPreset", { enumerable: true, get: function () { return prefsUI_1.resetObsidianMetadataPreset; } });
+Object.defineProperty(exports, "runObsidianSetupWizard", { enumerable: true, get: function () { return prefsUI_1.runObsidianSetupWizard; } });
 Object.defineProperty(exports, "saveObsidianMetadataPreset", { enumerable: true, get: function () { return prefsUI_1.saveObsidianMetadataPreset; } });
 var dashboard_1 = require("./obsidian/dashboard");
 Object.defineProperty(exports, "setupObsidianDashboards", { enumerable: true, get: function () { return dashboard_1.setupObsidianDashboards; } });
+var settings_1 = require("./obsidian/settings");
+Object.defineProperty(exports, "writeObsidianConnectionTestFile", { enumerable: true, get: function () { return settings_1.writeObsidianConnectionTestFile; } });
+Object.defineProperty(exports, "initObsidianStorage", { enumerable: true, get: function () { return settings_1.initObsidianStorage; } });
 var managed_1 = require("./obsidian/managed");
 Object.defineProperty(exports, "applyManagedObsidianFrontmatter", { enumerable: true, get: function () { return managed_1.applyManagedObsidianFrontmatter; } });
 Object.defineProperty(exports, "extractManagedObsidianUserMarkdown", { enumerable: true, get: function () { return managed_1.extractManagedObsidianUserMarkdown; } });
@@ -18,5 +23,6 @@ Object.defineProperty(exports, "getManagedObsidianSourceHash", { enumerable: tru
 Object.defineProperty(exports, "isManagedObsidianNote", { enumerable: true, get: function () { return managed_1.isManagedObsidianNote; } });
 Object.defineProperty(exports, "renderManagedObsidianNoteMarkdown", { enumerable: true, get: function () { return managed_1.renderManagedObsidianNoteMarkdown; } });
 var sync_1 = require("./obsidian/sync");
+Object.defineProperty(exports, "openItemsInObsidian", { enumerable: true, get: function () { return sync_1.openItemsInObsidian; } });
 Object.defineProperty(exports, "repairObsidianManagedLinks", { enumerable: true, get: function () { return sync_1.repairObsidianManagedLinks; } });
 Object.defineProperty(exports, "syncSelectedItemsToObsidian", { enumerable: true, get: function () { return sync_1.syncSelectedItemsToObsidian; } });

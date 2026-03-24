@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.registerMenus = registerMenus;
 const package_json_1 = require("../../package.json");
+const obsidian_1 = require("./obsidian");
 function registerMenus() {
     Zotero.MenuManager.registerMenu({
         menuID: `${package_json_1.config.addonRef}-menuTools`,
@@ -184,6 +185,24 @@ function registerMenus() {
                     addon.hooks.onOpenNote(context.items[0].id, "window", {
                         forceTakeover: true,
                     });
+                },
+            },
+            {
+                menuType: "menuitem",
+                l10nID: `${package_json_1.config.addonRef}-menuItem-openInObsidian`,
+                icon: `chrome://${package_json_1.config.addonRef}/content/icons/favicon.png`,
+                onShowing: (_, context) => {
+                    var _a;
+                    context.setVisible(((_a = context.items) === null || _a === void 0 ? void 0 : _a.length) === 1 &&
+                        context.items[0].isRegularItem() &&
+                        Boolean((0, obsidian_1.getManagedObsidianNoteForItem)(context.items[0])));
+                },
+                onCommand: (_, context) => {
+                    var _a;
+                    if (!((_a = context.items) === null || _a === void 0 ? void 0 : _a.length)) {
+                        return;
+                    }
+                    void addon.hooks.onOpenItemsInObsidian(context.items);
                 },
             },
             {

@@ -33,6 +33,9 @@ declare namespace _ZoteroTypes {
       "obsidian.includeHiddenInfo": boolean;
       "obsidian.includeAnnotations": boolean;
       "obsidian.includeChildNotes": boolean;
+      "obsidian.translateMissingMetadata": boolean;
+      "obsidian.translateMissingTitle": boolean;
+      "obsidian.translateMissingAbstract": boolean;
       "obsidian.metadataPreset": string;
       "obsidian.metadataPresetLibrary": string;
       "obsidian.metadataPresetActive": string;

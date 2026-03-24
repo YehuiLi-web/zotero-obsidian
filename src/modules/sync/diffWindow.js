@@ -113,7 +113,10 @@ function showSyncDiff(noteId, mdPath) {
                         autoSyncDelay: Zotero.Notes.AUTO_SYNC_DELAY,
                     },
                 });
-                yield addon.api.$export.syncMDBatch(mdStatus.filedir, [noteItem.id], [mdStatus.meta]);
+                yield addon.api.$export.syncMDBatch(mdStatus.filedir, [noteItem.id], [mdStatus.meta], {
+                    historyReason: "merge-resolve",
+                    historyAction: "merge",
+                });
                 break;
             default:
                 break;

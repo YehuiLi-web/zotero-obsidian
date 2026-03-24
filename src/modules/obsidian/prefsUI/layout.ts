@@ -16,6 +16,11 @@ type ObsidianPrefsLayoutContext = {
     includeAnnotations: boolean;
     includeChildNotes: boolean;
   };
+  translationConfig: {
+    enabled: boolean;
+    includeTitle: boolean;
+    includeAbstract: boolean;
+  };
   fileNameTemplate: string;
   syncScope: string;
   updateStrategy: string;
@@ -58,6 +63,9 @@ type ObsidianPrefsLayoutContext = {
     includeAnnotationsInputId: string;
     includeHiddenInfoInputId: string;
     includeChildNotesInputId: string;
+    translateMissingMetadataInputId: string;
+    translateMissingTitleInputId: string;
+    translateMissingAbstractInputId: string;
     itemTemplateDisplayId: string;
     frontmatterSummaryId: string;
     frontmatterFieldListId: string;
@@ -94,6 +102,7 @@ function renderChoiceCardHTML(
     value?: string;
     inputId?: string;
     checked: boolean;
+    disabled?: boolean;
     title: string;
     description: string;
     badge?: string;
@@ -105,6 +114,7 @@ function renderChoiceCardHTML(
     options.name ? `name="${esc(options.name)}"` : "",
     options.value ? `value="${esc(options.value)}"` : "",
     checkedAttr(options.checked),
+    options.disabled ? `disabled="disabled"` : "",
   ]
     .filter(Boolean)
     .join(" ");
@@ -461,7 +471,7 @@ function buildObsidianNoteDesignPanelHTML(context: ObsidianPrefsLayoutContext) {
 
 function buildObsidianSyncPanelHTML(context: ObsidianPrefsLayoutContext) {
   const esc = context.escapeHTML;
-  const { ids, groupNames } = context;
+  const { ids, groupNames, translationConfig } = context;
 
   return `
     <section class="ob-bridge-panel" data-ob-panel="sync">
@@ -624,6 +634,52 @@ function buildObsidianSyncPanelHTML(context: ObsidianPrefsLayoutContext) {
             description: context.uiText(
               "在系统文件夹中定位刚生成的 Markdown 文件。",
               "Reveal the generated Markdown file in the system file explorer.",
+            ),
+          })}
+        </div>
+      </div>
+
+      <div class="ob-bridge-card">
+        <h3 class="ob-bridge-card__title">${esc(
+          context.uiText("缺失翻译补全", "Missing Translation Autofill"),
+        )}</h3>
+        <p class="ob-bridge-card__help">${esc(
+          context.uiText(
+            "同步前可调用 Translate for Zotero 为缺失的标题或摘要翻译补齐 extra 字段。未安装外部翻译插件时，会直接跳过，不影响主同步。",
+            "Before syncing, call Translate for Zotero to backfill missing title or abstract translations into item extra fields. If the external plugin is unavailable, syncing continues normally.",
+          ),
+        )}</p>
+        <div class="ob-bridge-choice-grid">
+          ${renderChoiceCardHTML(context, {
+            inputType: "checkbox",
+            inputId: ids.translateMissingMetadataInputId,
+            checked: translationConfig.enabled,
+            title: context.uiText("同步前自动补齐缺失翻译", "Autofill missing translations before sync"),
+            description: context.uiText(
+              "总开关。启用后，才会尝试调用外部翻译插件。",
+              "Master switch. When enabled, the plugin may call the external translator.",
+            ),
+          })}
+          ${renderChoiceCardHTML(context, {
+            inputType: "checkbox",
+            inputId: ids.translateMissingTitleInputId,
+            checked: translationConfig.includeTitle,
+            disabled: !translationConfig.enabled,
+            title: context.uiText("补标题翻译", "Fill title translations"),
+            description: context.uiText(
+              "仅当 titleTranslation 为空时翻译标题并回写。",
+              "Translate and write back the title only when titleTranslation is empty.",
+            ),
+          })}
+          ${renderChoiceCardHTML(context, {
+            inputType: "checkbox",
+            inputId: ids.translateMissingAbstractInputId,
+            checked: translationConfig.includeAbstract,
+            disabled: !translationConfig.enabled,
+            title: context.uiText("补摘要翻译", "Fill abstract translations"),
+            description: context.uiText(
+              "仅当 abstractTranslation 为空时翻译摘要并回写。",
+              "Translate and write back the abstract only when abstractTranslation is empty.",
             ),
           })}
         </div>

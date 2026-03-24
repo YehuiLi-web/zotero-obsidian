@@ -295,6 +295,8 @@ export type FluentMessageId =
   | 'obsidian-syncScope-selection'
   | 'obsidian-templateSettings-title'
   | 'obsidian-title'
+  | 'obsidian-translateMissingMetadata-failed'
+  | 'obsidian-translateMissingMetadata-unavailable'
   | 'obsidian-vaultName-label'
   | 'obsidian-vaultRoot-label'
   | 'options'

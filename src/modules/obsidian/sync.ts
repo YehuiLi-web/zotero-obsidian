@@ -34,6 +34,7 @@ import {
   isManagedObsidianNote,
   persistChildNoteExclusions,
 } from "./managed";
+import { autofillMissingMetadataTranslations } from "./translation";
 
 async function createObsidianNote(
   topItem: Zotero.Item,
@@ -979,6 +980,14 @@ async function syncSelectedItemsToObsidian() {
       if (!confirmed) {
         return;
       }
+    }
+
+    const translationReport = await autofillMissingMetadataTranslations(
+      selectedItems,
+      settings.translation,
+    );
+    for (const warning of translationReport.warnings) {
+      showHint(warning.message);
     }
 
     const noteItems: Zotero.Item[] = [];

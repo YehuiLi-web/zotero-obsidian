@@ -196,3 +196,5 @@ userGuide-workspaceNoteInfo-desc = Notunuz hakkındaki etiket, ilişki ve bağla
 userGuide-finish-title = Hazırız!
 userGuide-finish-desc = Better Notes ile not alma yolculuğunuzun tadını çıkartın!
     Bu rehbere her yardım menüsünden her zaman ulaşabilirsiniz.
+obsidian-translateMissingMetadata-unavailable = Missing translation autofill was skipped because Translate for Zotero is not installed or its API is unavailable.
+obsidian-translateMissingMetadata-failed = Missing translation autofill failed for at least one item. Continuing sync with the original content. Detail: { $detail }

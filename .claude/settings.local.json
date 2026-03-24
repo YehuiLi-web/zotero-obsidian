@@ -9,7 +9,14 @@
       "Bash(taskkill //IM zotero.exe //F)",
       "Bash(cd:*)",
       "Bash(wc -l src/modules/obsidian/*.ts src/modules/obsidian/prefsUI/*.ts)",
-      "Bash(grep -r \"子笔记\\\\|subnote\\\\|subNote\" E:/obsidian_zotero/zotero-better-notes --include=*.xhtml --include=*.ftl --include=*.ts --include=*.js -n)"
+      "Bash(grep -r \"子笔记\\\\|subnote\\\\|subNote\" E:/obsidian_zotero/zotero-better-notes --include=*.xhtml --include=*.ftl --include=*.ts --include=*.js -n)",
+      "Bash(xargs wc:*)",
+      "Bash(wc:*)",
+      "Bash(python3:*)",
+      "Bash(find E:/obsidian_zotero/zotero-obsidian/addon/chrome/content -name *.xhtml -o -name preferences.xhtml)",
+      "WebSearch",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)"
     ]
   }
 }

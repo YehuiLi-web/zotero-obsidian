@@ -1,0 +1,36 @@
+"use strict";
+// ── Obsidian Prefs UI — Element IDs ──
+// All DOM element IDs used in the preferences panel.
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.OBSIDIAN_SYNC_SCOPE_GROUP_NAME = exports.OBSIDIAN_UPDATE_STRATEGY_GROUP_NAME = exports.OBSIDIAN_CONTENT_SUMMARY_ID = exports.OBSIDIAN_SYNC_SUMMARY_ID = exports.OBSIDIAN_PREVIEW_BODY_ID = exports.OBSIDIAN_PREVIEW_FRONTMATTER_ID = exports.OBSIDIAN_PREVIEW_FILE_ID = exports.OBSIDIAN_PREVIEW_META_ID = exports.OBSIDIAN_PREVIEW_TRIGGER_ID = exports.OBSIDIAN_FILE_NAME_CONTEXT_ID = exports.OBSIDIAN_FILE_NAME_PREVIEW_ID = exports.OBSIDIAN_FILE_NAME_RULE_ID = exports.OBSIDIAN_DASHBOARD_DIR_HINT_ID = exports.OBSIDIAN_ASSETS_DIR_HINT_ID = exports.OBSIDIAN_NOTES_DIR_HINT_ID = exports.OBSIDIAN_VAULT_ROOT_HINT_ID = exports.OBSIDIAN_CONNECTION_TEST_RESULT_ID = exports.OBSIDIAN_CONNECTION_TEST_BUTTON_ID = exports.OBSIDIAN_CONNECTION_STATUS_ID = exports.OBSIDIAN_OPEN_AFTER_SYNC_INPUT_ID = exports.OBSIDIAN_REVEAL_AFTER_SYNC_INPUT_ID = exports.OBSIDIAN_WATCH_FILES_INPUT_ID = exports.OBSIDIAN_AUTO_SYNC_INPUT_ID = exports.OBSIDIAN_ASSETS_DIR_INPUT_ID = exports.OBSIDIAN_NOTES_DIR_INPUT_ID = exports.OBSIDIAN_VAULT_ROOT_INPUT_ID = exports.OBSIDIAN_APP_PATH_INPUT_ID = exports.OBSIDIAN_TOOLTIP_ID = exports.OBSIDIAN_SETTINGS_STYLE_ID = exports.OBSIDIAN_SETTINGS_ROOT_ID = void 0;
+const package_json_1 = require("../../../../package.json");
+exports.OBSIDIAN_SETTINGS_ROOT_ID = `${package_json_1.config.addonRef}-obsidian-settingsRoot`;
+exports.OBSIDIAN_SETTINGS_STYLE_ID = `${package_json_1.config.addonRef}-obsidian-settingsStyle`;
+exports.OBSIDIAN_TOOLTIP_ID = `${package_json_1.config.addonRef}-obsidian-tooltip`;
+exports.OBSIDIAN_APP_PATH_INPUT_ID = `${package_json_1.config.addonRef}-obsidian-appPath`;
+exports.OBSIDIAN_VAULT_ROOT_INPUT_ID = `${package_json_1.config.addonRef}-obsidian-vaultRoot`;
+exports.OBSIDIAN_NOTES_DIR_INPUT_ID = `${package_json_1.config.addonRef}-obsidian-notesDir`;
+exports.OBSIDIAN_ASSETS_DIR_INPUT_ID = `${package_json_1.config.addonRef}-obsidian-assetsDir`;
+exports.OBSIDIAN_AUTO_SYNC_INPUT_ID = `${package_json_1.config.addonRef}-obsidian-autoSync`;
+exports.OBSIDIAN_WATCH_FILES_INPUT_ID = `${package_json_1.config.addonRef}-obsidian-watchFiles`;
+exports.OBSIDIAN_REVEAL_AFTER_SYNC_INPUT_ID = `${package_json_1.config.addonRef}-obsidian-revealAfterSync`;
+exports.OBSIDIAN_OPEN_AFTER_SYNC_INPUT_ID = `${package_json_1.config.addonRef}-obsidian-openAfterSync`;
+exports.OBSIDIAN_CONNECTION_STATUS_ID = `${package_json_1.config.addonRef}-obsidian-connectionStatus`;
+exports.OBSIDIAN_CONNECTION_TEST_BUTTON_ID = `${package_json_1.config.addonRef}-obsidian-connectionTestButton`;
+exports.OBSIDIAN_CONNECTION_TEST_RESULT_ID = `${package_json_1.config.addonRef}-obsidian-connectionTestResult`;
+exports.OBSIDIAN_VAULT_ROOT_HINT_ID = `${package_json_1.config.addonRef}-obsidian-vaultRootHint`;
+exports.OBSIDIAN_NOTES_DIR_HINT_ID = `${package_json_1.config.addonRef}-obsidian-notesDirHint`;
+exports.OBSIDIAN_ASSETS_DIR_HINT_ID = `${package_json_1.config.addonRef}-obsidian-assetsDirHint`;
+exports.OBSIDIAN_DASHBOARD_DIR_HINT_ID = `${package_json_1.config.addonRef}-obsidian-dashboardDirHint`;
+exports.OBSIDIAN_FILE_NAME_RULE_ID = `${package_json_1.config.addonRef}-obsidian-fileNameRule`;
+exports.OBSIDIAN_FILE_NAME_PREVIEW_ID = `${package_json_1.config.addonRef}-obsidian-fileNamePreview`;
+exports.OBSIDIAN_FILE_NAME_CONTEXT_ID = `${package_json_1.config.addonRef}-obsidian-fileNameContext`;
+exports.OBSIDIAN_PREVIEW_TRIGGER_ID = `${package_json_1.config.addonRef}-obsidian-previewTrigger`;
+exports.OBSIDIAN_PREVIEW_META_ID = `${package_json_1.config.addonRef}-obsidian-previewMeta`;
+exports.OBSIDIAN_PREVIEW_FILE_ID = `${package_json_1.config.addonRef}-obsidian-previewFile`;
+exports.OBSIDIAN_PREVIEW_FRONTMATTER_ID = `${package_json_1.config.addonRef}-obsidian-previewFrontmatter`;
+exports.OBSIDIAN_PREVIEW_BODY_ID = `${package_json_1.config.addonRef}-obsidian-previewBody`;
+exports.OBSIDIAN_SYNC_SUMMARY_ID = `${package_json_1.config.addonRef}-obsidian-syncSummary`;
+exports.OBSIDIAN_CONTENT_SUMMARY_ID = `${package_json_1.config.addonRef}-obsidian-contentSummary`;
+exports.OBSIDIAN_UPDATE_STRATEGY_GROUP_NAME = `${package_json_1.config.addonRef}-obsidian-updateStrategy`;
+exports.OBSIDIAN_SYNC_SCOPE_GROUP_NAME = `${package_json_1.config.addonRef}-obsidian-syncScopeChoice`;

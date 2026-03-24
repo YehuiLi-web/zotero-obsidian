@@ -97,7 +97,9 @@ function getSyncStatus(noteId) {
         filename: "",
         md5: "",
         noteMd5: "",
+        frontmatterMd5: "",
         managedSourceHash: "",
+        fileLastModified: 0,
         lastsync: new Date().getTime(),
         itemID: -1,
     };
@@ -219,7 +221,7 @@ function findAllSyncedFiles(searchDir) {
         const results = [];
         const mdRegex = /\.(md|MD|Md|mD)$/;
         yield Zotero.File.iterateDirectory(searchDir, (entry) => __awaiter(this, void 0, void 0, function* () {
-            var _a, _b;
+            var _a, _b, _c;
             if (entry.isDir) {
                 const subDirResults = yield findAllSyncedFiles(entry.path);
                 results.push(...subDirResults);
@@ -227,10 +229,10 @@ function findAllSyncedFiles(searchDir) {
             }
             if (mdRegex.test(entry.name)) {
                 const MDStatus = yield getMDStatus(entry.path);
-                if (!((_a = MDStatus.meta) === null || _a === void 0 ? void 0 : _a.$libraryID) || !((_b = MDStatus.meta) === null || _b === void 0 ? void 0 : _b.$itemKey)) {
+                if (!((_a = MDStatus.meta) === null || _a === void 0 ? void 0 : _a.$libraryID) || !(((_b = MDStatus.meta) === null || _b === void 0 ? void 0 : _b.$itemKey) || ((_c = MDStatus.meta) === null || _c === void 0 ? void 0 : _c.zotero_note_key))) {
                     return;
                 }
-                const item = yield Zotero.Items.getByLibraryAndKeyAsync(MDStatus.meta.$libraryID, MDStatus.meta.$itemKey);
+                const item = yield Zotero.Items.getByLibraryAndKeyAsync(MDStatus.meta.$libraryID, MDStatus.meta.$itemKey || MDStatus.meta.zotero_note_key);
                 if (!item || !item.isNote()) {
                     return;
                 }
@@ -244,6 +246,7 @@ function findAllSyncedFiles(searchDir) {
                     md5: Zotero.Utilities.Internal.md5(MDStatus.content, false),
                     noteMd5: Zotero.Utilities.Internal.md5(item.getNote(), false),
                     managedSourceHash,
+                    fileLastModified: MDStatus.lastmodify.getTime(),
                     lastsync: MDStatus.lastmodify.getTime(),
                     itemID: item.id,
                 });

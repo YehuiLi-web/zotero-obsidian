@@ -148,10 +148,10 @@ async function applyManagedObsidianFrontmatter(
     hasFrontmatterKey(normalizedMeta, "tags") ||
     hasFrontmatterKey(normalizedMeta, "zotero_tags")
   ) {
-    const desiredTags = mergeFrontmatterLists(
-      getManagedFrontmatterNonSystemTags(normalizedMeta.zotero_tags),
-      getManagedFrontmatterNonSystemTags(normalizedMeta.tags),
-    );
+    // `zotero_tags` is the authoritative back-sync surface when present.
+    // `tags` remains useful for Obsidian-native organization and as a
+    // compatibility fallback for older files that do not include
+    // `zotero_tags`.
     const currentTags = topItem
       .getTags()
       .map((tag) => cleanInline(tag.tag))
@@ -159,6 +159,9 @@ async function applyManagedObsidianFrontmatter(
     const currentTagLookup = new Map(
       currentTags.map((tag) => [normalizeManagedTag(tag).toLowerCase(), tag]),
     );
+    const desiredTags = hasFrontmatterKey(normalizedMeta, "zotero_tags")
+      ? getManagedFrontmatterNonSystemTags(normalizedMeta.zotero_tags)
+      : getManagedFrontmatterNonSystemTags(normalizedMeta.tags);
     const desiredTagLookup = new Set(
       desiredTags.map((tag) => tag.toLowerCase()),
     );
