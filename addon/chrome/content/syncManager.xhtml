@@ -1,0 +1,180 @@
+<?xml version="1.0"?>
+<!-- prettier-ignore -->
+<?xml-stylesheet href="chrome://global/skin/" type="text/css"?>
+<!-- prettier-ignore -->
+<?xml-stylesheet href="chrome://zotero/skin/zotero.css" type="text/css"?>
+<!-- prettier-ignore -->
+<?xml-stylesheet href="chrome://zotero-platform/content/zotero-react-client.css" type="text/css"?>
+<!-- prettier-ignore -->
+<?xml-stylesheet href="chrome://zotero-platform/content/zotero.css" type="text/css"?>
+<!-- prettier-ignore -->
+<!DOCTYPE html>
+<html
+  id="__addonRef__-syncManager"
+  lang="en"
+  xmlns="http://www.w3.org/1999/xhtml"
+  xmlns:xul="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
+  xmlns:html="http://www.w3.org/1999/xhtml"
+  windowtype="__addonRef__-syncManager"
+  sizemode="normal"
+  scrolling="false"
+  persist="screenX screenY width height sizemode"
+>
+  <head>
+    <title data-l10n-id="title"></title>
+    <meta charset="utf-8" />
+    <xul:linkset>
+      <link rel="localization" href="browser/menubar.ftl" />
+      <link rel="localization" href="browser/browserSets.ftl" />
+      <link rel="localization" href="toolkit/global/textActions.ftl" />
+      <link rel="localization" href="zotero.ftl" />
+      <link rel="localization" href="__addonRef__-syncManager.ftl" />
+    </xul:linkset>
+    <xul:commandset id="mainCommandSet">
+      <xul:command id="cmd_close" oncommand="window.close();" />
+    </xul:commandset>
+    <xul:keyset id="mainKeyset">
+      <xul:key
+        id="key_close"
+        data-l10n-id="close-shortcut"
+        command="cmd_close"
+        modifiers="accel"
+        reserved="true"
+      />
+    </xul:keyset>
+    <script>
+      document.addEventListener("DOMContentLoaded", (ev) => {
+        Services.scriptloader.loadSubScript(
+          "chrome://zotero/content/include.js",
+          this,
+        );
+        window.arguments[0]._initPromise.resolve();
+      });
+    </script>
+    <style>
+      html,
+      body {
+        min-width: 800px;
+        min-height: 400px;
+      }
+      html,
+      body,
+      .viewport {
+        padding: 0;
+        margin: 0;
+        height: 100%;
+        overflow: hidden;
+        word-wrap: break-word;
+        user-select: none;
+      }
+      .viewport {
+        margin: 0 5px 0 5px;
+        overflow-y: auto;
+      }
+      .viewport-container {
+        padding: 0;
+        margin: 0;
+        height: calc(100% - 50px);
+        width: 100%;
+        display: flex;
+        flex-direction: row;
+        overflow: hidden;
+        background: var(--material-background);
+        gap: 8px;
+      }
+      .list-viewport {
+        width: 46%;
+        min-width: 320px;
+        overflow: hidden;
+      }
+      .history-viewport {
+        width: 54%;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      #table-container {
+        height: 100%;
+        width: 100%;
+        overflow: auto;
+      }
+      #manager-table {
+        height: 100%;
+      }
+      .panel {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        min-height: 0;
+      }
+      .panel-title {
+        font-size: 1.05rem;
+        font-weight: 600;
+        padding: 6px 4px 8px 4px;
+      }
+      .history-table-wrap {
+        min-height: 180px;
+        height: 42%;
+      }
+      #history-table-container {
+        height: 100%;
+        width: 100%;
+        overflow: auto;
+      }
+      #manager-history-table {
+        height: 100%;
+      }
+      .history-preview-wrap {
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+      }
+      #history-preview {
+        flex: 1;
+        min-height: 0;
+        overflow: auto;
+        margin: 0;
+        padding: 10px;
+        border: 1px solid var(--material-medium);
+        border-radius: 6px;
+        background: color-mix(in srgb, var(--material-background) 92%, white);
+        white-space: pre-wrap;
+        word-break: break-word;
+        font-family: SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+        font-size: 12px;
+        line-height: 1.45;
+      }
+    </style>
+  </head>
+  <body class="zotero-window">
+    <div class="viewport-container">
+      <div id="list-container" class="viewport list-viewport panel">
+        <div class="panel-title" data-l10n-id="notesTitle"></div>
+        <div id="table-container"></div>
+      </div>
+      <div id="history-panel" class="viewport history-viewport panel">
+        <div class="panel-title" data-l10n-id="historyTitle"></div>
+        <div class="history-table-wrap">
+          <div id="history-table-container"></div>
+        </div>
+        <div class="history-preview-wrap">
+          <div class="panel-title" data-l10n-id="historyPreviewTitle"></div>
+          <pre id="history-preview"></pre>
+        </div>
+      </div>
+    </div>
+    <div
+      class="footer-container"
+      style="justify-content: flex-start; padding: 10px; gap: 8px"
+      xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
+    >
+      <button id="refresh" data-l10n-id="refresh"></button>
+      <button id="sync" data-l10n-id="sync"></button>
+      <button id="unSync" data-l10n-id="unSync"></button>
+      <button id="detect" data-l10n-id="detect"></button>
+      <button id="clearHistory" data-l10n-id="clearHistory"></button>
+    </div>
+  </body>
+</html>

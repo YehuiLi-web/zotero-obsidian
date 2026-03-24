@@ -1,0 +1,209 @@
+pref-title = Obsidian Bridge for Zotero
+
+close-shortcut =
+    .key = w
+
+menuEditor-resizeImage = Resize Image
+menuEditor-copy = Copy Note Link...
+menuEditor-copyLine = Copy Link of Line { $line }
+menuEditor-copySection = Copy Link of Section { $section }
+
+templateEditor-templateType = Type
+templateEditor-templateName = Name
+
+templateEditor-templateDisplayName =
+    .QuickInsertV3 = Quick Insert (Link)
+    .QuickImportV2 = Quick Import (Embed)
+    .QuickNoteV5 = Quick Note (From Annotation)
+    .ExportMDFileNameV2 = Export File Name
+    .ExportMDFileHeaderV2 = Export MD File Header
+    .ExportMDFileContent = Export MD File Content
+    .ExportLatexFileContent = Export Latex File Content
+
+templateEditor-templateDisplayType =
+    .system = Builtin
+    .item = Item
+    .text = Text
+    .unknown = ?
+
+templateEditor-templateHelp =
+    .system = For specific purposes, e.g., generating note link.
+    .item = Can generate note fragments from one or more selected items as input.
+    .text = Can generate note fragments. It doesn't require any input.
+
+editor-resizeImage-title = Resize Image
+editor-resizeImage-prompt = Resize image width to:
+editor-previewImage-title = Preview Image
+
+syncManager-noteName = Note Name
+syncManager-lastSync = Last Sync
+syncManager-filePath = Markdown Path
+syncManager-detectConfirmInfo = {$total} synced markdown files detected in {$dir}
+    {$new} new, {$current} will be updated.
+    Do you want to apply the changes?
+
+syncInfo-syncTo = Markdown Path
+syncInfo-lastSync = Last Sync
+syncInfo-sync = Sync
+syncInfo-unSync = Unsync
+syncInfo-reveal = Show in Folder
+syncInfo-manager = Sync Manager
+syncInfo-export = Export As...
+syncInfo-cancel = Close
+
+fileInterface-sync = Sync to
+
+sync-start-hint = Note Auto-Sync is enabled every
+sync-stop-hint = Note Auto-Sync is disabled
+sync-running-hint-title = Note Syncing
+sync-running-hint-check = Check Status
+sync-running-hint-updateMD = Update Markdown
+sync-running-hint-updateNote = Update Note
+sync-running-hint-diff = Confirm Merge
+sync-running-hint-finish = Finish
+sync-running-hint-synced = Synced
+sync-running-hint-upToDate = Up To Date
+
+workspace-switchOutline = Switch Outline Mode
+workspace-saveOutlineImage = Save Image
+workspace-saveOutlineFreeMind = Save MindMap
+workspace-emptyWorkspaceGuideInfo = No note opened in workspace.
+workspace-emptyWorkspaceGuideOpen = Choose a note to open
+workspace-emptyWorkspaceGuideOr = or
+workspace-emptyWorkspaceGuideCreate = Create a new note
+
+editor-toolbar-settings-openAsTab = Open Note in New Tab
+editor-toolbar-settings-openAsWindow = Open Note in Obsidian Bridge Window
+editor-toolbar-settings-showInLibrary = Show in Library
+editor-toolbar-settings-insertTemplate = Insert template
+editor-toolbar-settings-refreshTemplates = Update content from templates
+editor-toolbar-settings-copyLink = Copy link (L{ $line })
+editor-toolbar-settings-copyLinkAtSection = Copy link (Sec. { $section })
+editor-toolbar-settings-openParent = Open Attachment
+editor-toolbar-settings-export = Export Current Note...
+editor-toolbar-settings-refreshSyncing = Sync Now
+editor-toolbar-settings-updateRelatedNotes = Update Related Notes
+
+templatePicker-itemData-info = are selected in library. Please choose the data source:
+templatePicker-itemData-useLibrary = Use selected items in library
+templatePicker-itemData-useCustom = Choose another.
+templatePicker-itemData-title = Choose Item Template Data Source
+
+alert-notValidCollectionError = Please select a valid collection.
+alert-notValidParentItemError = No valid parent item.
+alert-syncImportedNotes = Keep imported notes in sync with Markdown files?
+alert-linkCreator-emptyNote = Cannot create link from/to an empty note. 
+alert-templateEditor-shouldImport = Seems like you are trying to directly save a note template share code. Do you want to import it as a template?
+alert-templateEditor-unsaved = You have unsaved changes in the template editor. Do you want to save them?
+obsidian-sync-noSelection = Select at least one regular Zotero item first.
+obsidian-sync-missingNotesDir = Configure an Obsidian literature notes folder in plugin settings first.
+obsidian-sync-missingVaultRoot = The configured Obsidian vault root does not exist.
+obsidian-sync-finished = Synced { $count } item(s) to Obsidian.
+obsidian-sync-showInFolder = Show in Folder
+obsidian-sync-noItemsInScope = No items to sync in the current scope.
+obsidian-sync-error = Sync failed: { $detail }
+obsidian-childNotePicker-title = Choose Child Notes to Stitch
+obsidian-childNotePicker-help = This paper matched multiple child notes. All matched notes are selected by default. Unchecked notes will be remembered and excluded from future syncs for this paper.
+obsidian-childNotePicker-confirm = Confirm Sync
+obsidian-childNotePicker-cancel = Cancel
+obsidian-note-metadata-title = Metadata
+obsidian-note-metadata-column-key = Key
+obsidian-note-metadata-column-value = Value
+obsidian-note-tags-title = Tags
+obsidian-note-abstract-title = Abstract
+obsidian-note-abstractTranslation-title = Abstract Translation
+obsidian-note-hiddenInfo-title = Hidden Info
+obsidian-note-emptyAbstract = _No abstract available._
+obsidian-note-emptyAbstractTranslation = _No translated abstract available._
+obsidian-note-userSection-workspace = Reading Summary
+obsidian-note-userSection-summary = One-sentence Summary
+obsidian-note-userSection-problem = Research Question
+obsidian-note-userSection-method = Core Method
+obsidian-note-userSection-conclusion = Main Conclusion
+obsidian-note-userSection-notes = Notes
+obsidian-note-userSection-questions = Questions
+obsidian-note-userSection-related = Related
+obsidian-metadataPreset-defaultName = Default Preset
+obsidian-metadataPreset-migratedName = Migrated Preset
+obsidian-metadataPreset-untitledName = Untitled Preset
+obsidian-metadataPreset-newName = New Preset
+obsidian-metadataPreset-saveAs-finished = Saved and activated preset "{ $name }".
+obsidian-metadataPreset-save-finished = Saved preset "{ $name }" and resynced linked notes.
+obsidian-metadataPreset-switch-finished = Switched to preset "{ $name }" and resynced linked notes.
+obsidian-metadataPreset-delete-lastBlocked = At least one metadata preset must be kept.
+obsidian-metadataPreset-delete-finished = Deleted the current preset and switched to "{ $name }".
+obsidian-metadataPreset-reset-finished = Restored the default fields for the current preset. Click "Save Current Preset" to apply them.
+obsidian-metadataPreset-defaultSection = Common Fields
+obsidian-frontmatter-option-titleTranslation = Title Translation & Aliases
+obsidian-frontmatter-option-itemType = Item Type
+obsidian-frontmatter-option-date = Date & Year
+obsidian-frontmatter-option-doi = DOI
+obsidian-frontmatter-option-citationKey = Citation Key
+obsidian-frontmatter-option-publication = Publication
+obsidian-frontmatter-option-itemLink = Zotero Item Link
+obsidian-frontmatter-option-pdfLink = PDF Attachment Link
+obsidian-frontmatter-option-authors = Author List
+obsidian-frontmatter-option-collections = Collections
+obsidian-frontmatter-option-zoteroTags = Zotero Tags
+obsidian-frontmatter-option-rating = Rating
+obsidian-fieldLabel-itemType = Item Type
+obsidian-fieldLabel-itemTypeKey = Item Type Key
+obsidian-fieldLabel-titleTranslation = Title Translation
+obsidian-fieldLabel-abstract = Abstract
+obsidian-fieldLabel-abstractTranslation = Abstract Translation
+obsidian-fieldLabel-creators = Authors
+obsidian-fieldLabel-collection = Collections
+obsidian-fieldLabel-itemLink = Zotero Item Link
+obsidian-fieldLabel-pdfLink = PDF Attachment
+obsidian-fieldLabel-related = Related Items
+obsidian-fieldLabel-JCRQ = JCR Quartile
+obsidian-fieldLabel-qnkey = Zotero Item Key
+obsidian-fieldLabel-tags = Tags
+obsidian-fieldLabel-dateY = Year
+obsidian-fieldLabel-datetimeAdded = Date Added
+obsidian-fieldLabel-datetimeModified = Date Modified
+obsidian-fieldLabel-citationKey = Citation Key
+obsidian-itemType-journalArticle = Journal Article
+obsidian-itemType-conferencePaper = Conference Paper
+obsidian-itemType-thesis = Thesis
+obsidian-itemType-book = Book
+obsidian-itemType-bookSection = Book Section
+obsidian-itemType-patent = Patent
+obsidian-sync-noManagedNotes = There are no linked Obsidian literature notes yet.
+obsidian-sync-managedNotesResynced = Resynced { $count } linked Obsidian note(s) with the current settings.
+obsidian-repairManagedLinks-none = No managed Obsidian links were recovered.
+obsidian-repairManagedLinks-finished = Recovered { $mappings } managed link(s), { $records } sync record(s), { $conflicts } conflict(s).
+
+userGuide-start-title = Welcome to Obsidian Bridge!
+userGuide-start-desc = Obsidian Bridge for Zotero helps you move Zotero 8 notes, metadata, and managed Markdown into an Obsidian-friendly workflow. This guide will help you get started and show you the main tools.
+userGuide-start-close = Remind me later
+userGuide-createNoteButton-title = Create a New Note
+userGuide-createNoteButton-desc = You can create a note here: blank or from a template.
+userGuide-createNote-title = Create a New Note
+userGuide-createNote-desc = Seems like you don't have any notes yet, let's create one.
+userGuide-createNoteFound-desc = Found notes in your library. Let's open one as an example.
+userGuide-openNote-title = Open note
+userGuide-openNote-desc = You can open a note in the Obsidian Bridge workspace tab by double-clicking it.
+userGuide-openNote-next = Open Note
+userGuide-workspace-title = Note Workspace Tab
+userGuide-workspace-desc = The note tab is where you can edit your note content, view the outline, and manage the relations.
+userGuide-workspaceEditor-title = Note Editor
+userGuide-workspaceEditor-desc = The editor supports rich text editing, code block, math block, and more.
+userGuide-workspaceEditorToolbar-title = Note Editor - Toolbar
+userGuide-workspaceEditorToolbar-desc = The toolbar provides quick access to common editing functions.
+    You can set the heading, text/background color, text style, insert link or reference here.
+userGuide-workspaceEditorLinkCreator-title = Note Editor - Link Creator
+userGuide-workspaceEditorLinkCreator-desc = You can create a link from/to another note via the link creator.
+userGuide-workspaceEditorMoreOptions-title = Note Editor - More Options
+userGuide-workspaceEditorMoreOptions-desc = Open the note in a new window, show it in the library, insert a template, copy the link, export the note, and more.
+userGuide-workspaceOutline-title = Outline
+userGuide-workspaceOutline-desc = The outline shows the structure of the note. You can navigate to a section by clicking on it.
+userGuide-workspaceOutlineMode-title = Outline Mode
+userGuide-workspaceOutlineMode-desc = Switch to outline mode to view the note structure in a more compact way.
+userGuide-workspaceOutlineSaveAs-title = Save As
+userGuide-workspaceOutlineSaveAs-desc = You can export the note to multiple formats, including PDF, Markdown, MS Word, mind map, and more.
+userGuide-workspaceNoteInfo-title = Note Info
+userGuide-workspaceNoteInfo-desc = You can view, edit, and manage the note's tags, relations, and links.
+userGuide-finish-title = We are all set!
+userGuide-finish-desc = Enjoy building your Zotero 8 to Obsidian workflow with Obsidian Bridge for Zotero!
+    You can always run this guide again from the Help menu.

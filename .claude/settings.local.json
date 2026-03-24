@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc:*)",
+      "Bash(npm run:*)",
+      "Bash(npm test:*)",
+      "Bash(echo \"Exit code: $?\")",
+      "Bash(taskkill /IM zotero.exe /F)",
+      "Bash(taskkill //IM zotero.exe //F)",
+      "Bash(cd:*)",
+      "Bash(wc -l src/modules/obsidian/*.ts src/modules/obsidian/prefsUI/*.ts)",
+      "Bash(grep -r \"子笔记\\\\|subnote\\\\|subNote\" E:/obsidian_zotero/zotero-better-notes --include=*.xhtml --include=*.ftl --include=*.ts --include=*.js -n)"
+    ]
+  }
+}

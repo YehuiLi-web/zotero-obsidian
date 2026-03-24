@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100%" height="100%">
+  <!-- Zotero 'Z' in Crimson Red -->
+  <path d="M 15 30 L 40 30 L 15 70 L 40 70" fill="none" stroke="#CC2936" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+  
+  <!-- Sync Arrow going right to 'O' -->
+  <path d="M 40 30 L 65 30" fill="none" stroke="#CC2936" stroke-width="10" stroke-linecap="round"/>
+  <polygon points="60,20 75,30 60,40" fill="#CC2936"/>
+
+  <!-- Obsidian 'O' in Deep Purple -->
+  <circle cx="75" cy="50" r="20" fill="none" stroke="#7A3CEF" stroke-width="10"/>
+  
+  <!-- Sync Arrow going left to 'Z' -->
+  <path d="M 75 70 L 35 70" fill="none" stroke="#7A3CEF" stroke-width="10" stroke-linecap="round"/>
+  <polygon points="40,60 25,70 40,80" fill="#7A3CEF"/>
+</svg>

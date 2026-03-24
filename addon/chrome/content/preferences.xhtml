@@ -1,0 +1,661 @@
+<linkset>
+  <html:link rel="localization" href="__addonRef__-preferences.ftl" />
+</linkset>
+<groupbox>
+  <label><html:h2 data-l10n-id="basic-title"></html:h2></label>
+  <checkbox
+    data-l10n-id="basic-exportNotes-takeover"
+    native="true"
+    preference="__prefsPrefix__.exportNotes.takeover"
+  />
+</groupbox>
+<groupbox>
+  <label><html:h2 data-l10n-id="editor-title"></html:h2></label>
+  <hbox align="center">
+    <html:label
+      for="__addonRef__-editor-expandLevel"
+      data-l10n-id="editor-expandLevel-label"
+    ></html:label>
+    <html:input
+      type="number"
+      min="1"
+      max="6"
+      step="1"
+      id="__addonRef__-editor-expandLevel"
+      preference="__prefsPrefix__.workspace.outline.expandLevel"
+    ></html:input>
+  </hbox>
+  <checkbox
+    data-l10n-id="editor-keepLinks"
+    native="true"
+    preference="__prefsPrefix__.workspace.outline.keepLinks"
+  />
+  <hbox align="center">
+    <html:label
+      data-l10n-id="editor-noteLinkPreviewType"
+      for="__addonRef__-editor-noteLinkPreviewType"
+    ></html:label>
+    <radiogroup
+      id="__addonRef__-editor-noteLinkPreviewType"
+      preference="__prefsPrefix__.editor.noteLinkPreviewType"
+      orient="horizontal"
+      oncommand="Zotero.__addonInstance__.api.utils.requireRestart();"
+    >
+      <radio data-l10n-id="editor-noteLinkPreview-hover" value="hover" />
+      <radio data-l10n-id="editor-noteLinkPreview-ctrl" value="ctrl" />
+      <radio data-l10n-id="editor-noteLinkPreview-disable" value="disable" />
+    </radiogroup>
+  </hbox>
+  <checkbox
+    data-l10n-id="editor-useMagicKey"
+    native="true"
+    preference="__prefsPrefix__.editor.useMagicKey"
+  />
+  <checkbox
+    data-l10n-id="editor-useMagicKeyShortcut"
+    native="true"
+    preference="__prefsPrefix__.editor.useMagicKeyShortcut"
+  />
+  <checkbox
+    data-l10n-id="editor-useMarkdownPaste"
+    native="true"
+    preference="__prefsPrefix__.editor.useMarkdownPaste"
+  />
+  <hbox align="center">
+    <html:label
+      for="__addonRef__-editor-pinTable"
+      data-l10n-id="editor-pinTable-label"
+    ></html:label>
+    <checkbox
+      data-l10n-id="__addonRef__-editor-pinTableLeft"
+      native="true"
+      preference="__prefsPrefix__.editor.pinTableLeft"
+    />
+    <checkbox
+      data-l10n-id="__addonRef__-editor-pinTableTop"
+      native="true"
+      preference="__prefsPrefix__.editor.pinTableTop"
+    />
+  </hbox>
+</groupbox>
+<groupbox>
+  <label><html:h2 data-l10n-id="sync-title"></html:h2></label>
+  <hbox align="center">
+    <html:label
+      for="__addonRef__-sync-period"
+      data-l10n-id="sync-period-label"
+    ></html:label>
+    <html:input
+      type="number"
+      min="-1"
+      max="3600"
+      step="1"
+      placeholder="-1 for disable"
+      id="__addonRef__-sync-period"
+      preference="__prefsPrefix__.syncPeriodSeconds"
+      onchange="Zotero.__addonInstance__.api.utils.requireRestart();"
+    ></html:input>
+  </hbox>
+  <hbox align="center">
+    <html:label
+      for="__addonRef__-sync-attachmentFolder"
+      data-l10n-id="sync-attachmentFolder-label"
+    ></html:label>
+    <html:input
+      id="__addonRef__-sync-attachmentFolder"
+      preference="__prefsPrefix__.syncAttachmentFolder"
+    ></html:input>
+  </hbox>
+  <hbox align="center">
+    <button
+      onclick="Zotero.__addonInstance__.hooks.onShowSyncManager()"
+      data-l10n-id="sync-manager"
+    ></button>
+  </hbox>
+</groupbox>
+<groupbox>
+  <label><html:h2 data-l10n-id="obsidian-title"></html:h2></label>
+  <html:div id="__addonRef__-obsidian-settingsRoot" class="ob-prefs-root">
+    <!-- Section 1: 连接 -->
+    <html:div class="ob-prefs-section">
+      <html:h3
+        class="ob-prefs-section__title ob-prefs-tooltipTarget"
+        data-ob-tooltip="connection-overview"
+      >
+        连接
+      </html:h3>
+      <html:div class="ob-prefs-connectionHeader">
+        <html:div
+          id="__addonRef__-obsidian-connectionStatus"
+          class="ob-prefs-status"
+        ></html:div>
+        <html:button
+          type="button"
+          id="__addonRef__-obsidian-connectionTestButton"
+          >测试写入一个文件</html:button
+        >
+        <html:div
+          id="__addonRef__-obsidian-connectionTestResult"
+          class="ob-prefs-inline ob-prefs-connectionFeedback"
+        ></html:div>
+      </html:div>
+
+      <html:div class="ob-prefs-connectionFields">
+        <html:div class="ob-prefs-pathField">
+          <html:label
+            for="__addonRef__-obsidian-appPath"
+            class="ob-prefs-fieldLabel ob-prefs-tooltipTarget"
+            data-ob-tooltip="app-path"
+          >
+            <html:span>Obsidian 路径</html:span>
+          </html:label>
+          <html:input
+            id="__addonRef__-obsidian-appPath"
+            class="ob-prefs-textbox"
+          ></html:input>
+          <html:button type="button" data-ob-action="pick-app"
+            >选择文件</html:button
+          >
+        </html:div>
+
+        <html:div class="ob-prefs-pathField">
+          <html:label
+            for="__addonRef__-obsidian-vaultRoot"
+            class="ob-prefs-fieldLabel ob-prefs-tooltipTarget"
+            data-ob-tooltip="vault-root"
+          >
+            <html:span>Vault 目录</html:span>
+          </html:label>
+          <html:input
+            id="__addonRef__-obsidian-vaultRoot"
+            class="ob-prefs-textbox"
+          ></html:input>
+          <html:button type="button" data-ob-action="pick-vault"
+            >选择文件夹</html:button
+          >
+        </html:div>
+
+        <html:div class="ob-prefs-pathField">
+          <html:label
+            for="__addonRef__-obsidian-notesDir"
+            class="ob-prefs-fieldLabel ob-prefs-tooltipTarget"
+            data-ob-tooltip="notes-dir"
+          >
+            <html:span>笔记目录</html:span>
+          </html:label>
+          <html:input
+            id="__addonRef__-obsidian-notesDir"
+            class="ob-prefs-textbox"
+          ></html:input>
+          <html:button type="button" data-ob-action="pick-notes"
+            >选择文件夹</html:button
+          >
+        </html:div>
+
+        <html:div class="ob-prefs-pathField">
+          <html:label
+            for="__addonRef__-obsidian-assetsDir"
+            class="ob-prefs-fieldLabel ob-prefs-tooltipTarget"
+            data-ob-tooltip="assets-dir"
+          >
+            <html:span>资源目录</html:span>
+          </html:label>
+          <html:input
+            id="__addonRef__-obsidian-assetsDir"
+            class="ob-prefs-textbox"
+          ></html:input>
+          <html:button type="button" data-ob-action="pick-assets"
+            >选择文件夹</html:button
+          >
+        </html:div>
+
+        <html:div class="ob-prefs-pathField">
+          <html:label
+            for="__addonRef__-obsidian-dashboardDir"
+            class="ob-prefs-fieldLabel ob-prefs-tooltipTarget"
+            data-ob-tooltip="dashboard-dir"
+          >
+            <html:span>统计面板目录</html:span>
+          </html:label>
+          <html:input
+            id="__addonRef__-obsidian-dashboardDir"
+            class="ob-prefs-textbox"
+          ></html:input>
+          <html:button type="button" data-ob-action="pick-dashboard"
+            >选择文件夹</html:button
+          >
+        </html:div>
+
+        <html:div class="ob-prefs-row ob-prefs-actions">
+          <html:button type="button" data-ob-action="detect-vault"
+            >自动检测 Vault</html:button
+          >
+          <html:button type="button" data-ob-action="run-setup-wizard"
+            >运行配置向导</html:button
+          >
+        </html:div>
+      </html:div>
+    </html:div>
+
+    <separator class="thin" />
+
+    <!-- Section 2: 笔记内容 (template + content toggles + child note rules + frontmatter/metadata + preview) -->
+    <html:div class="ob-prefs-section">
+      <html:h3
+        class="ob-prefs-section__title ob-prefs-tooltipTarget"
+        data-ob-tooltip="note-structure-overview"
+      >
+        笔记内容
+      </html:h3>
+
+      <html:div class="ob-prefs-row ob-prefs-formRow ob-prefs-formRow--actions">
+        <html:label
+          for="__addonRef__-obsidian-itemTemplateDisplay"
+          class="ob-prefs-fieldLabel ob-prefs-tooltipTarget"
+          data-ob-tooltip="item-template"
+        >
+          <html:span data-l10n-id="obsidian-itemTemplate-label"></html:span>
+        </html:label>
+        <html:input
+          id="__addonRef__-obsidian-itemTemplateDisplay"
+          class="ob-prefs-textbox"
+          readonly="readonly"
+        ></html:input>
+        <html:button type="button" data-ob-action="pick-template"
+          >选择模板</html:button
+        >
+        <html:button type="button" data-ob-action="edit-template"
+          >编辑模板</html:button
+        >
+      </html:div>
+
+      <html:div class="ob-prefs-checklist">
+        <html:label class="ob-prefs-check">
+          <html:input
+            type="checkbox"
+            id="__addonRef__-obsidian-includeMetadata"
+          />
+          <html:span>元数据</html:span>
+        </html:label>
+        <html:label class="ob-prefs-check">
+          <html:input
+            type="checkbox"
+            id="__addonRef__-obsidian-includeAbstract"
+          />
+          <html:span>Abstract</html:span>
+        </html:label>
+        <html:label class="ob-prefs-check">
+          <html:input
+            type="checkbox"
+            id="__addonRef__-obsidian-includeAnnotations"
+          />
+          <html:span>PDF 批注</html:span>
+        </html:label>
+        <html:label class="ob-prefs-check">
+          <html:input
+            type="checkbox"
+            id="__addonRef__-obsidian-includeHiddenInfo"
+          />
+          <html:span>隐藏字段</html:span>
+        </html:label>
+        <html:label class="ob-prefs-check">
+          <html:input
+            type="checkbox"
+            id="__addonRef__-obsidian-includeChildNotes"
+          />
+          <html:span>子笔记</html:span>
+        </html:label>
+      </html:div>
+      <html:div
+        id="__addonRef__-obsidian-contentSummary"
+        class="ob-prefs-inline"
+      ></html:div>
+
+      <html:div class="ob-prefs-row ob-prefs-formRow">
+        <html:label
+          for="__addonRef__-obsidian-bridgeChildNoteTags"
+          class="ob-prefs-fieldLabel ob-prefs-tooltipTarget"
+          data-ob-tooltip="child-note-tags"
+        >
+          <html:span>子笔记匹配标签</html:span>
+        </html:label>
+        <html:input
+          id="__addonRef__-obsidian-bridgeChildNoteTags"
+          class="ob-prefs-textbox"
+        ></html:input>
+      </html:div>
+      <html:label class="ob-prefs-check">
+        <html:input
+          type="checkbox"
+          id="__addonRef__-obsidian-bridgeChildNotePromptSelect"
+        />
+        <html:span>命中多条子笔记时，同步前弹窗选择</html:span>
+      </html:label>
+
+      <html:div
+        class="ob-prefs-label ob-prefs-tooltipTarget"
+        data-ob-tooltip="frontmatter-fields"
+      >
+        Frontmatter 字段
+      </html:div>
+      <html:div
+        id="__addonRef__-obsidian-frontmatterSummary"
+        class="ob-prefs-inline"
+      ></html:div>
+      <html:div id="__addonRef__-obsidian-frontmatterFieldList"></html:div>
+
+      <html:div
+        class="ob-prefs-label ob-prefs-tooltipTarget"
+        data-ob-tooltip="metadata-preset"
+      >
+        Metadata 字段预设
+      </html:div>
+      <html:div class="ob-prefs-row ob-prefs-formRow">
+        <html:label
+          for="__addonRef__-obsidian-metadataPresetActive"
+          class="ob-prefs-fieldLabel"
+          >当前配置</html:label
+        >
+        <html:select
+          id="__addonRef__-obsidian-metadataPresetActive"
+          class="ob-prefs-textbox"
+        ></html:select>
+      </html:div>
+      <html:div class="ob-prefs-row ob-prefs-formRow">
+        <html:label
+          for="__addonRef__-obsidian-metadataPresetName"
+          class="ob-prefs-fieldLabel"
+          >配置名称</html:label
+        >
+        <html:input
+          id="__addonRef__-obsidian-metadataPresetName"
+          class="ob-prefs-textbox"
+        ></html:input>
+      </html:div>
+      <html:div class="ob-prefs-row ob-prefs-formRow">
+        <html:label
+          for="__addonRef__-obsidian-metadataPresetSection"
+          class="ob-prefs-fieldLabel"
+          >字段栏目</html:label
+        >
+        <html:select
+          id="__addonRef__-obsidian-metadataPresetSection"
+          class="ob-prefs-textbox"
+        ></html:select>
+      </html:div>
+      <html:div class="ob-prefs-row ob-prefs-formRow">
+        <html:label
+          for="__addonRef__-obsidian-metadataPresetSearch"
+          class="ob-prefs-fieldLabel"
+          >搜索字段</html:label
+        >
+        <html:input
+          id="__addonRef__-obsidian-metadataPresetSearch"
+          class="ob-prefs-textbox"
+        ></html:input>
+      </html:div>
+      <hbox align="center" class="ob-prefs-row ob-prefs-actions">
+        <html:button type="button" id="__addonRef__-obsidian-metadataPresetSave"
+          >保存当前配置</html:button
+        >
+        <html:button
+          type="button"
+          id="__addonRef__-obsidian-metadataPresetDuplicate"
+          >另存为新配置</html:button
+        >
+        <html:button
+          type="button"
+          id="__addonRef__-obsidian-metadataPresetReset"
+          >恢复默认字段</html:button
+        >
+        <html:button
+          type="button"
+          id="__addonRef__-obsidian-metadataPresetDelete"
+          >删除当前配置</html:button
+        >
+        <html:button
+          type="button"
+          id="__addonRef__-obsidian-metadataPresetResync"
+          >重同步已联动笔记</html:button
+        >
+      </hbox>
+      <html:div
+        id="__addonRef__-obsidian-metadataPresetSummary"
+        class="ob-prefs-inline"
+      ></html:div>
+      <html:div id="__addonRef__-obsidian-metadataPresetFieldList"></html:div>
+
+      <hbox align="center" class="ob-prefs-row">
+        <html:button type="button" id="__addonRef__-obsidian-previewTrigger"
+          >生成预览</html:button
+        >
+      </hbox>
+      <html:div
+        id="__addonRef__-obsidian-previewMeta"
+        class="ob-prefs-inline"
+      ></html:div>
+      <html:div class="ob-prefs-label">文件名</html:div>
+      <html:div
+        id="__addonRef__-obsidian-previewFile"
+        class="ob-prefs-preview"
+      ></html:div>
+      <html:div class="ob-prefs-label">Frontmatter</html:div>
+      <html:pre
+        id="__addonRef__-obsidian-previewFrontmatter"
+        class="ob-prefs-code"
+      ></html:pre>
+      <html:div class="ob-prefs-label">Markdown</html:div>
+      <html:pre
+        id="__addonRef__-obsidian-previewBody"
+        class="ob-prefs-code"
+      ></html:pre>
+    </html:div>
+
+    <separator class="thin" />
+
+    <!-- Section 3: 文件与同步 (file naming + sync scope + strategy + auto sync options) -->
+    <html:div class="ob-prefs-section">
+      <html:h3
+        class="ob-prefs-section__title ob-prefs-tooltipTarget"
+        data-ob-tooltip="sync-overview"
+      >
+        文件与同步
+      </html:h3>
+
+      <html:div id="__addonRef__-obsidian-fileNameRule" class="ob-prefs-inline">
+        固定命名：标题 -- 稳定短哈希
+      </html:div>
+      <html:div
+        id="__addonRef__-obsidian-fileNamePreview"
+        class="ob-prefs-preview"
+      ></html:div>
+      <html:div
+        id="__addonRef__-obsidian-fileNameContext"
+        class="ob-prefs-inline"
+      ></html:div>
+
+      <html:div
+        class="ob-prefs-label ob-prefs-tooltipTarget"
+        data-ob-tooltip="sync-scope"
+      >
+        同步范围
+      </html:div>
+      <html:div class="ob-prefs-radios">
+        <html:label class="ob-prefs-check">
+          <html:input
+            type="radio"
+            name="__addonRef__-obsidian-syncScopeChoice"
+            value="selection"
+          />
+          <html:span>当前选中</html:span>
+        </html:label>
+        <html:label class="ob-prefs-check">
+          <html:input
+            type="radio"
+            name="__addonRef__-obsidian-syncScopeChoice"
+            value="currentList"
+          />
+          <html:span>当前列表</html:span>
+        </html:label>
+        <html:label class="ob-prefs-check">
+          <html:input
+            type="radio"
+            name="__addonRef__-obsidian-syncScopeChoice"
+            value="library"
+          />
+          <html:span>整个库</html:span>
+        </html:label>
+      </html:div>
+
+      <html:div
+        class="ob-prefs-label ob-prefs-tooltipTarget"
+        data-ob-tooltip="update-strategy"
+      >
+        更新策略
+      </html:div>
+      <html:div class="ob-prefs-radios ob-prefs-radios--vertical">
+        <html:label class="ob-prefs-check">
+          <html:input
+            type="radio"
+            name="__addonRef__-obsidian-updateStrategy"
+            value="managed"
+          />
+          <html:span>只更新托管区（推荐）</html:span>
+        </html:label>
+        <html:label class="ob-prefs-check">
+          <html:input
+            type="radio"
+            name="__addonRef__-obsidian-updateStrategy"
+            value="overwrite"
+          />
+          <html:span>覆盖全部内容</html:span>
+        </html:label>
+        <html:label class="ob-prefs-check">
+          <html:input
+            type="radio"
+            name="__addonRef__-obsidian-updateStrategy"
+            value="skip"
+          />
+          <html:span>跳过已有笔记</html:span>
+        </html:label>
+      </html:div>
+
+      <html:div class="ob-prefs-checklist">
+        <html:label class="ob-prefs-check">
+          <html:input type="checkbox" id="__addonRef__-obsidian-autoSync" />
+          <html:span>自动同步</html:span>
+        </html:label>
+        <html:label class="ob-prefs-check">
+          <html:input
+            type="checkbox"
+            id="__addonRef__-obsidian-watchFiles"
+          />
+          <html:span>主动监视 Obsidian 文件变化</html:span>
+        </html:label>
+        <html:label class="ob-prefs-check">
+          <html:input
+            type="checkbox"
+            id="__addonRef__-obsidian-openAfterSync"
+          />
+          <html:span>同步后打开 Obsidian</html:span>
+        </html:label>
+        <html:label class="ob-prefs-check">
+          <html:input
+            type="checkbox"
+            id="__addonRef__-obsidian-revealAfterSync"
+          />
+          <html:span>同步后定位文件</html:span>
+        </html:label>
+      </html:div>
+
+      <html:div
+        id="__addonRef__-obsidian-syncSummary"
+        class="ob-prefs-inline"
+      ></html:div>
+    </html:div>
+
+    <separator class="thin" />
+
+    <!-- Section 4: 操作与维护 -->
+    <html:div class="ob-prefs-section">
+      <html:h3
+        class="ob-prefs-section__title ob-prefs-tooltipTarget"
+        data-ob-tooltip="advanced-overview"
+      >
+        操作与维护
+      </html:h3>
+
+      <hbox align="center" class="ob-prefs-row">
+        <html:button type="button" data-ob-action="sync-now"
+          >立即同步</html:button
+        >
+      </hbox>
+
+      <html:label class="ob-prefs-check">
+        <html:input
+          type="checkbox"
+          id="__addonRef__-obsidian-dashboardAutoSetup"
+        />
+        <html:span>同步时自动初始化统计面板</html:span>
+      </html:label>
+      <hbox align="center" class="ob-prefs-row ob-prefs-actions">
+        <html:button type="button" data-ob-action="setup-dashboard"
+          >初始化统计面板</html:button
+        >
+        <html:button type="button" data-ob-action="repair-links"
+          >修复联动映射</html:button
+        >
+      </hbox>
+    </html:div>
+  </html:div>
+</groupbox>
+<groupbox>
+  <label><html:h2 data-l10n-id="template-title"></html:h2></label>
+  <hbox align="center">
+    <button
+      onclick="Zotero.__addonInstance__.hooks.onShowTemplateEditor()"
+      data-l10n-id="template-editor"
+    ></button>
+  </hbox>
+</groupbox>
+<groupbox>
+  <label><html:h2 data-l10n-id="annotationNote-title"></html:h2></label>
+  <checkbox
+    data-l10n-id="annotationNote-enableTagSync"
+    native="true"
+    preference="__prefsPrefix__.annotationNote.enableTagSync"
+  />
+</groupbox>
+<groupbox>
+  <label><html:h2 data-l10n-id="about-title"></html:h2></label>
+
+  <hbox>
+    <label
+      class="zotero-text-link keyboard-clickable"
+      is="zotero-text-link"
+      role="link"
+      href="https://github.com/windingwind/zotero-better-notes"
+      value="Homepage - GitHub"
+    ></label>
+    <label value="|"></label>
+    <label
+      class="zotero-text-link keyboard-clickable"
+      is="zotero-text-link"
+      role="link"
+      href="https://github.com/windingwind/zotero-better-notes/issues"
+      value="Bug Report, Feature Request"
+    ></label>
+    <label value="|"></label>
+    <label
+      class="zotero-text-link keyboard-clickable"
+      is="zotero-text-link"
+      role="link"
+      href="https://github.com/windingwind/zotero-better-notes/discussions/categories/q-a"
+      value="Q&amp;A"
+    ></label>
+  </hbox>
+  <label
+    data-l10n-id="help"
+    data-l10n-args='{"time": "__buildTime__","name": "__addonName__","version":"__buildVersion__"}'
+  ></label>
+</groupbox>

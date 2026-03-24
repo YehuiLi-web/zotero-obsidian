@@ -1,0 +1,19 @@
+zob-outbound-creator {
+  gap: 16px;
+  overflow: auto;
+
+zob-note-picker {
+    border: var(--material-border);
+    min-width: 600px;
+  }
+
+zob-note-outline {
+    border: var(--material-border);
+    min-width: 300px;
+  }
+
+zob-note-preview {
+    border: var(--material-border);
+    min-width: 450px;
+  }
+}

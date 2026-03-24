@@ -1,0 +1,228 @@
+import { config } from "../../package.json";
+import { getString } from "../utils/locale";
+import { clearPref, getPref, setPref } from "../utils/prefs";
+
+export { showUserGuide };
+
+const LATEST_TOUR_VERSION = 1;
+
+async function showUserGuide(win: _ZoteroTypes.MainWindow, force = false) {
+  const doc = win.document;
+  if (!force && getPref("latestTourVersion") == LATEST_TOUR_VERSION) return;
+  setPref("latestTourVersion", LATEST_TOUR_VERSION);
+  const exampleNote = `
+# Welcome to Obsidian Bridge
+
+This note is created by the Obsidian Bridge user guide.
+You can always run the user guide again from menu Help -> Obsidian Bridge User Guide.
+
+## 📝 Introduction
+
+> Bridge Zotero 8 notes, metadata, and managed Markdown into your Obsidian workflow.
+
+Obsidian Bridge for Zotero is a Zotero 8 plugin for [Zotero](https://zotero.org).
+
+It helps you iterate on workflows such as:
+
+- managed markdown sync
+- metadata and frontmatter export
+- template customization
+- dashboard setup
+- Obsidian-friendly note generation
+
+and:
+
+- stays inside Zotero
+- remains highly customizable
+- focuses on Obsidian integration first
+`;
+  let noteItem: Zotero.Item | undefined;
+  let tabID: string;
+  addon.data.hint.silent = true;
+  await new ztoolkit.Guide()
+    .addStep({
+      title: getString("userGuide-start-title"),
+      description: `<html:img src='chrome://${
+        config.addonRef
+      }/content/icons/knowledge-app.png' style="width: 300px; height: auto;"></html:img>
+    <html:span style='width: 300px; display: block; margin-top: 10px;'>
+      ${getString("userGuide-start-desc")}
+    </html:span>`,
+      position: "center",
+      showButtons: ["next", "close"],
+      closeBtnText: getString("userGuide-start-close"),
+      showProgress: true,
+      onCloseClick: () => {
+        clearPref("latestTourVersion");
+      },
+    })
+    .addStep({
+      title: getString("userGuide-createNoteButton-title"),
+      description: getString("userGuide-createNoteButton-desc"),
+      element: "#zotero-tb-note-add",
+      showButtons: ["prev", "next"],
+      showProgress: true,
+      onBeforeRender: async () => {
+        const Zotero_Tabs = Zotero.getMainWindow().Zotero_Tabs;
+        Zotero_Tabs.select("zotero-pane");
+        const collectionsView = win.ZoteroPane.collectionsView;
+        collectionsView && collectionsView.selectLibrary(1);
+      },
+    })
+    .addStep({
+      title: getString("userGuide-createNote-title"),
+      description: getString("userGuide-createNote-desc"),
+      position: "center",
+      showButtons: ["next"],
+      showProgress: true,
+      onBeforeRender: async ({ state, config }) => {
+        noteItem = (await Zotero.Items.getAll(1)).find((item) => item.isNote());
+        if (noteItem) {
+          await win.ZoteroPane.selectItem(noteItem.id);
+          config.description = getString("userGuide-createNoteFound-desc");
+        }
+      },
+      onExit: async () => {
+        noteItem = new Zotero.Item("note");
+        noteItem.setNote(await addon.api.convert.md2html(exampleNote));
+        await noteItem.saveTx();
+      },
+    })
+    .addStep({
+      title: getString("userGuide-openNote-title"),
+      description: getString("userGuide-openNote-desc"),
+      element: "#item-tree-main-default .row.selected",
+      showButtons: ["next"],
+      nextBtnText: getString("userGuide-openNote-next"),
+      showProgress: true,
+    })
+    .addStep({
+      title: getString("userGuide-workspace-title"),
+      description: getString("userGuide-workspace-desc"),
+      position: "center",
+      showButtons: ["next"],
+      showProgress: true,
+      onBeforeRender: async ({ state: { step, controller } }) => {
+        tabID = (await addon.hooks.onOpenNote(noteItem!.id, "tab", {
+          forceTakeover: true,
+        })) as string;
+
+        if (!tabID) {
+          controller.abort();
+          win.alert("Failed to open the note.");
+          return;
+        }
+      },
+    })
+    .addStep({
+      title: getString("userGuide-workspaceEditor-title"),
+      description: getString("userGuide-workspaceEditor-desc"),
+      element: () =>
+        doc.querySelector(`#${tabID} #${config.addonRef}-editor-main`)!,
+      position: "center",
+      showButtons: ["prev", "next"],
+      showProgress: true,
+    })
+    .addStep({
+      title: getString("userGuide-workspaceEditorToolbar-title"),
+      description: getString("userGuide-workspaceEditorToolbar-desc"),
+      element: () =>
+        (doc.querySelector(
+          `#${tabID} #${config.addonRef}-editor-main`,
+        ) as any)!._iframe.contentDocument.querySelector(".toolbar")!,
+      onMask: ({ mask }) => {
+        const elem = doc.querySelector(
+          `#${tabID} #${config.addonRef}-editor-main`,
+        ) as any;
+        mask(elem);
+        mask(elem._iframe.contentDocument.querySelector(".toolbar"));
+      },
+    })
+
+    .addStep({
+      title: getString("userGuide-workspaceEditorLinkCreator-title"),
+      description: getString("userGuide-workspaceEditorLinkCreator-desc"),
+      element: () =>
+        (doc.querySelector(
+          `#${tabID} #${config.addonRef}-editor-main`,
+        ) as any)!._iframe.contentDocument.querySelector(
+          ".toolbar .start button",
+        )!,
+      onMask: ({ mask }) => {
+        const elem = doc.querySelector(
+          `#${tabID} #${config.addonRef}-editor-main`,
+        ) as any;
+        mask(elem);
+        mask(
+          elem._iframe.contentDocument.querySelector(".toolbar .start button"),
+        );
+      },
+    })
+    .addStep({
+      title: getString("userGuide-workspaceEditorMoreOptions-title"),
+      description: getString("userGuide-workspaceEditorMoreOptions-desc"),
+      element: () =>
+        (doc.querySelector(
+          `#${tabID} #${config.addonRef}-editor-main`,
+        ) as any)!._iframe.contentDocument.querySelector(
+          ".toolbar .end .dropdown.more-dropdown",
+        )!,
+      onMask: ({ mask }) => {
+        const elem = doc.querySelector(
+          `#${tabID} #${config.addonRef}-editor-main`,
+        ) as any;
+        mask(elem);
+        mask(
+          elem._iframe.contentDocument.querySelector(
+            ".toolbar .end .dropdown.more-dropdown",
+          ),
+        );
+      },
+    })
+    .addStep({
+      title: getString("userGuide-workspaceOutline-title"),
+      description: getString("userGuide-workspaceOutline-desc"),
+      element: () => doc.querySelector(`#${tabID} zob-outline`)!,
+      position: "center",
+      showButtons: ["prev", "next"],
+      showProgress: true,
+    })
+    .addStep({
+      title: getString("userGuide-workspaceOutlineMode-title"),
+      description: getString("userGuide-workspaceOutlineMode-desc"),
+      element: () =>
+        doc.querySelector(
+          `#${tabID} zob-outline #${config.addonRef}-setOutline`,
+        )!,
+      showButtons: ["prev", "next"],
+      showProgress: true,
+    })
+    .addStep({
+      title: getString("userGuide-workspaceOutlineSaveAs-title"),
+      description: getString("userGuide-workspaceOutlineSaveAs-desc"),
+      element: () =>
+        doc.querySelector(
+          `#${tabID} zob-outline #${config.addonRef}-saveOutline`,
+        )!,
+      showButtons: ["prev", "next"],
+      showProgress: true,
+    })
+    .addStep({
+      title: getString("userGuide-workspaceNoteInfo-title"),
+      description: getString("userGuide-workspaceNoteInfo-desc"),
+      element: () => doc.querySelector(`#${tabID} zob-context`)!,
+      position: "center",
+      showButtons: ["prev", "next"],
+      showProgress: true,
+    })
+    .addStep({
+      title: getString("userGuide-finish-title"),
+      description: getString("userGuide-finish-desc"),
+      position: "center",
+      showButtons: ["prev", "close"],
+      showProgress: true,
+    })
+    .show(doc);
+
+  addon.data.hint.silent = false;
+}

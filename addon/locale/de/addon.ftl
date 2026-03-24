@@ -1,0 +1,198 @@
+pref-title = Better Notes
+
+close-shortcut =
+    .key = w
+
+menuEditor-resizeImage = Bildgröße ändern
+menuEditor-copy = Notizlink kopieren...
+menuEditor-copyLine = Zeilenlink kopieren { $line }
+menuEditor-copySection = Abschnittslink kopieren { $section }
+
+templateEditor-templateType = Typ
+templateEditor-templateName = Name
+
+templateEditor-templateDisplayName =
+    .QuickInsertV3 = Schnelles Einfügen (Link)
+    .QuickImportV2 = Schnellimport (Einbettung)
+    .QuickNoteV5 = Schnellnotiz (Aus Anmerkungen)
+    .ExportMDFileNameV2 = Dateinamen importieren
+    .ExportMDFileHeaderV2 = MD-Datei-Header exportieren
+    .ExportMDFileContent = MD-Dateiinhalt exportieren
+    .ExportLatexFileContent = LaTeX-Dateiinhalt exportieren
+
+templateEditor-templateDisplayType =
+    .system = Voreinstellung
+    .item = Eintrag
+    .text = Text
+    .unknown = ?
+
+templateEditor-templateHelp =
+    .system = Für bestimmte Zwecke, z.B. um einen Notizlink zu generieren.
+    .item = Kann Notizfragmente aus einem oder mehreren Einträgen als Eingabe erzeugen.
+    .text = Kann Notizfragmente erzeugen. Benötigt keine Eingabe.
+
+editor-resizeImage-title = Bildgröße ändern
+editor-resizeImage-prompt = Bildbreite ändern zu:
+editor-previewImage-title = Bildvorschau
+
+syncManager-noteName = Notizname
+syncManager-lastSync = Zuletzt synchronisiert
+syncManager-filePath = Markdown-Pfad
+syncManager-detectConfirmInfo = {$total} synchronisierte Markdown-Dateien in {$dir} gefunden.
+    {$new} neu, {$current} werden aktualisiert.
+    Möchtest Du die Änderungen übernehmen?
+obsidian-note-metadata-title = Metadata
+obsidian-note-metadata-column-key = Key
+obsidian-note-metadata-column-value = Value
+obsidian-note-tags-title = Tags
+obsidian-note-abstract-title = Abstract
+obsidian-note-abstractTranslation-title = Abstract Translation
+obsidian-note-hiddenInfo-title = Hidden Info
+obsidian-note-emptyAbstract = _No abstract available._
+obsidian-note-emptyAbstractTranslation = _No translated abstract available._
+obsidian-note-userSection-workspace = Reading Summary
+obsidian-note-userSection-summary = One-sentence Summary
+obsidian-note-userSection-problem = Research Question
+obsidian-note-userSection-method = Core Method
+obsidian-note-userSection-conclusion = Main Conclusion
+obsidian-note-userSection-notes = Notes
+obsidian-note-userSection-questions = Questions
+obsidian-note-userSection-related = Related
+obsidian-metadataPreset-defaultName = Default Preset
+obsidian-metadataPreset-migratedName = Migrated Preset
+obsidian-metadataPreset-untitledName = Untitled Preset
+obsidian-metadataPreset-newName = New Preset
+obsidian-metadataPreset-saveAs-finished = Saved and activated preset "{ $name }".
+obsidian-metadataPreset-save-finished = Saved preset "{ $name }" and resynced linked notes.
+obsidian-metadataPreset-switch-finished = Switched to preset "{ $name }" and resynced linked notes.
+obsidian-metadataPreset-delete-lastBlocked = At least one metadata preset must be kept.
+obsidian-metadataPreset-delete-finished = Deleted the current preset and switched to "{ $name }".
+obsidian-metadataPreset-reset-finished = Restored the default fields for the current preset. Click "Save Current Preset" to apply them.
+obsidian-metadataPreset-defaultSection = Common Fields
+obsidian-frontmatter-option-titleTranslation = Title Translation & Aliases
+obsidian-frontmatter-option-itemType = Item Type
+obsidian-frontmatter-option-date = Date & Year
+obsidian-frontmatter-option-doi = DOI
+obsidian-frontmatter-option-citationKey = Citation Key
+obsidian-frontmatter-option-publication = Publication
+obsidian-frontmatter-option-itemLink = Zotero Item Link
+obsidian-frontmatter-option-pdfLink = PDF Attachment Link
+obsidian-frontmatter-option-authors = Author List
+obsidian-frontmatter-option-collections = Collections
+obsidian-frontmatter-option-zoteroTags = Zotero Tags
+obsidian-frontmatter-option-rating = Rating
+obsidian-fieldLabel-itemType = Item Type
+obsidian-fieldLabel-itemTypeKey = Item Type Key
+obsidian-fieldLabel-titleTranslation = Title Translation
+obsidian-fieldLabel-abstract = Abstract
+obsidian-fieldLabel-abstractTranslation = Abstract Translation
+obsidian-fieldLabel-creators = Authors
+obsidian-fieldLabel-collection = Collections
+obsidian-fieldLabel-itemLink = Zotero Item Link
+obsidian-fieldLabel-pdfLink = PDF Attachment
+obsidian-fieldLabel-related = Related Items
+obsidian-fieldLabel-JCRQ = JCR Quartile
+obsidian-fieldLabel-qnkey = Zotero Item Key
+obsidian-fieldLabel-tags = Tags
+obsidian-fieldLabel-dateY = Year
+obsidian-fieldLabel-datetimeAdded = Date Added
+obsidian-fieldLabel-datetimeModified = Date Modified
+obsidian-fieldLabel-citationKey = Citation Key
+obsidian-itemType-journalArticle = Journal Article
+obsidian-itemType-conferencePaper = Conference Paper
+obsidian-itemType-thesis = Thesis
+obsidian-itemType-book = Book
+obsidian-itemType-bookSection = Book Section
+obsidian-itemType-patent = Patent
+obsidian-sync-noManagedNotes = There are no linked Obsidian literature notes yet.
+obsidian-sync-managedNotesResynced = Resynced { $count } linked Obsidian note(s) with the current settings.
+obsidian-repairManagedLinks-none = No managed Obsidian links were recovered.
+obsidian-repairManagedLinks-finished = Recovered { $mappings } managed link(s), { $records } sync record(s), { $conflicts } conflict(s).
+
+syncInfo-syncTo = Markdown-Pfad
+syncInfo-lastSync = Zuletzt Aktualisiert
+syncInfo-sync = Synchronisieren
+syncInfo-unSync = Synchronisation beenden
+syncInfo-reveal = Im Ordner anzeigen
+syncInfo-manager = Sync-Manager
+syncInfo-export = Exportieren als...
+syncInfo-cancel = Schließen
+
+fileInterface-sync = Synchronisieren mit
+
+sync-start-hint = Notizen Auto-Synchronisation erfolgt alle
+sync-stop-hint = Notizen Auto-Synchronisation ist deaktiviert
+sync-running-hint-title = Notizen-Synchronisation
+sync-running-hint-check = Status überprüfen
+sync-running-hint-updateMD = Markdown aktualisieren
+sync-running-hint-updateNote = Notiz aktualisieren
+sync-running-hint-diff = Zusammenführung bestätigen
+sync-running-hint-finish = Beenden
+sync-running-hint-synced = Synchronisiert
+sync-running-hint-upToDate = Aktuell
+
+workspace-switchOutline = Gliederungsmodus umschalten
+workspace-saveOutlineImage = Bild speichern
+workspace-saveOutlineFreeMind = Mindmap speichern
+workspace-emptyWorkspaceGuideInfo = Keine Notiz im Workspace geöffnet.
+workspace-emptyWorkspaceGuideOpen = Wähle eine Notiz zum Öffnen
+workspace-emptyWorkspaceGuideOr = oder
+workspace-emptyWorkspaceGuideCreate = Erstelle eine neue Notiz
+
+editor-toolbar-settings-openAsTab = Notiz in neues Tab öffnen
+editor-toolbar-settings-openAsWindow = Notiz in neues BN-Fenster öffnen
+editor-toolbar-settings-showInLibrary = In Bibliothek anzeigen
+editor-toolbar-settings-insertTemplate = Vorlage einsetzen
+editor-toolbar-settings-refreshTemplates = Inhalt aus Vorlage aktualisieren
+editor-toolbar-settings-copyLink = Link kopieren (L{ $line })
+editor-toolbar-settings-copyLinkAtSection = Link kopieren (Sec. { $section })
+editor-toolbar-settings-openParent = Anhang öffnen
+editor-toolbar-settings-export = Aktuelle Notiz exportieren
+editor-toolbar-settings-refreshSyncing = Jetzt synchronisieren
+editor-toolbar-settings-updateRelatedNotes = Verwandte Notizen aktualisieren
+
+templatePicker-itemData-info = sind in der Bibliothek ausgewählt. Wähle bitte die Datenquelle:
+templatePicker-itemData-useLibrary = Benutze ausgewählte Einträge in der Bibliothek
+templatePicker-itemData-useCustom = Wähle andere.
+templatePicker-itemData-title = Wähle die Datenquelle der Eintrags-Vorlage.
+
+alert-notValidCollectionError = Wähle bitte eine gültige Sammlung.
+alert-notValidParentItemError = Kein gültiger übergeordneter Eintrag.
+alert-syncImportedNotes = Importierte Notizen mit Markdown-Dateien synchronisiert belassen?
+alert-linkCreator-emptyNote = Kann keinen Link von/zu leerer Notiz erstellen. 
+alert-templateEditor-shouldImport = Es scheint als würdest Du versuchen, einen Notizenvorlagen-Freigabecode direkt zu speichern. Möchtest du stattdessen die Vorlage importieren?
+alert-templateEditor-unsaved = Du hast ungespeicherte Änderungen in deinem Vorlagen-Editor. Möchtest Du sie speichern?
+
+userGuide-start-title = Willkommen bei Better Notes!
+userGuide-start-desc = Better Notes ist ein leistungsstarkes Tool zum Erstellen von Notizen, mit dem Du Deine Gedanken und Ideen beim Lesen von Dokumenten organisieren kannst. Dieser Leitfaden hilft Dir beim Einstieg in Better Notes und zeigt Dir, wie Du die Funktionen optimal nutzen kannst.
+userGuide-start-close = Später erinnern
+userGuide-createNoteButton-title = Neue Notiz erstellen
+userGuide-createNoteButton-desc = Du kannst hier eine neue Notiz erstellen, leer oder aus einer Vorlage.
+userGuide-createNote-title = Neue Notiz erstellen
+userGuide-createNote-desc = Es scheint, als hättest Du noch keine Notizen. Lass uns eine erstellen.
+userGuide-createNoteFound-desc = Notizen in deiner Bibliothek gefunden. Lass uns eine als Beispiel öffnen.
+userGuide-openNote-title = Notiz öffnen
+userGuide-openNote-desc = Du kannst mit Doppelklick eine Notiz im Better Notes Workspace-Tab öffnen.
+userGuide-openNote-next = Notiz öffnen
+userGuide-workspace-title = Notiz Workspace-Tab
+userGuide-workspace-desc = Im Notizen-Tab kannst du den Inhalt deiner Notiz bearbeiten, die Gliederung einsehen und die Verbindungen verwalten.
+userGuide-workspaceEditor-title = Notizen-Editor
+userGuide-workspaceEditor-desc = Der Notizen-Editor unterstützt Rich-Text-Bearbeitungen, Code-Blöcke, Mathe-Syntax und mehr.
+userGuide-workspaceEditorToolbar-title = Notizen-Editor - Toolbar
+userGuide-workspaceEditorToolbar-desc = Die Toolbar bietet Schnellzugriff auf alle häufigsten Bearbeitungsfunktionen.
+    Du kannst hier Überschriften, Text- und Hintergrundfarben und Text-Stile setzen, sowie Links oder Verweise einfügen.
+userGuide-workspaceEditorLinkCreator-title = Notizen-Editor - Link-Ersteller
+userGuide-workspaceEditorLinkCreator-desc = Du kannst mittels des Link-Erstellers einen Link von/zu einer anderen Notiz erstellen.
+userGuide-workspaceEditorMoreOptions-title = Notizen-Editor - Mehr Optionen
+userGuide-workspaceEditorMoreOptions-desc = Notiz in neuem Fenster öffnen, in der Bibliothek anzeigen, Vorlage einsetzen, Link kopieren und mehr.
+userGuide-workspaceOutline-title = Gliederung
+userGuide-workspaceOutline-desc = Die Gliederung zeigt die Struktur der Notiz. Du kannst die Abschnitte anklicken um zu ihnen zu springen.
+userGuide-workspaceOutlineMode-title = Gliederungsmodus
+userGuide-workspaceOutlineMode-desc = Wechsle zum Gliederungsmodus, um die Struktur der Notiz in einer kompakteren Form anzusehen.
+userGuide-workspaceOutlineSaveAs-title = Speichern als
+userGuide-workspaceOutlineSaveAs-desc = Du kannst die Notiz in mehrere Formate exportieren, PDF, Markdown, MS Word, Mindmap, und mehr.
+userGuide-workspaceNoteInfo-title = Notizinfo
+userGuide-workspaceNoteInfo-desc = Du kannst die Tags, Verbindungen und Links der Notiz ansehen, bearbeiten und vewalten.
+userGuide-finish-title = Wir sind fertig!
+userGuide-finish-desc = Viel Spaß beim Notieren mit Better Notes!
+    Du kannst dieses Tutorial über das Hilfe-Menü jederzeit erneut starten.
