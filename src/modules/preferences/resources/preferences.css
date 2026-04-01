@@ -1,0 +1,44 @@
+@namespace html url("http://www.w3.org/1999/xhtml");
+
+html|div.bn-pref-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-block: 4px;
+}
+
+html|div.bn-pref-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+html|label.bn-pref-checkbox,
+html|label.bn-pref-radio {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  line-height: 1.5;
+}
+
+html|div.bn-pref-radio-group {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+html|div.bn-pref-checkboxes-inline {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+}
+
+html|hr.bn-pref-divider {
+  width: 100%;
+  border: 0;
+  border-top: 1px solid var(--material-border, rgba(255, 255, 255, 0.18));
+  margin: 8px 0;
+}

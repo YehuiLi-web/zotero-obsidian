@@ -184,27 +184,65 @@ export async function syncMDBatch(
     recordHistory?: boolean;
     historyReason?: string;
     historyAction?: SyncHistoryEntry["action"];
+    targetFiles?: string[];
   } = {},
 ) {
   const noteItems = Zotero.Items.get(noteIds);
-  await Zotero.File.createDirectoryIfMissingAsync(saveDir);
+  const normalizedSaveDir = formatPath(saveDir);
+  const ensuredDirs = new Set<string>();
+  const ensureDir = async (dir: string) => {
+    const normalized = formatPath(dir);
+    if (!normalized || ensuredDirs.has(normalized)) {
+      return;
+    }
+    ensuredDirs.add(normalized);
+    await Zotero.File.createDirectoryIfMissingAsync(normalized);
+  };
+  await ensureDir(normalizedSaveDir);
   const attachmentDir =
     options.attachmentDir ||
-    jointPath(saveDir, getPref("syncAttachmentFolder") as string);
+    jointPath(normalizedSaveDir, getPref("syncAttachmentFolder") as string);
   const attachmentFolder =
     options.attachmentFolder || (getPref("syncAttachmentFolder") as string);
   const hasImage = noteItems.some((noteItem) =>
     noteItem.getNote().includes("<img"),
   );
-  if (hasImage) {
-    await Zotero.File.createDirectoryIfMissingAsync(attachmentDir);
+  if (hasImage && attachmentDir) {
+    await ensureDir(attachmentDir);
   }
   let i = 0;
   const updateStrategy = getManagedObsidianUpdateStrategy();
   for (const noteItem of noteItems) {
-    let filename = await addon.api.sync.getMDFileName(noteItem.id, saveDir);
-    filename = await maybeRenameManagedSyncFile(noteItem, saveDir, filename);
-    const filePath = jointPath(saveDir, filename);
+    const explicitTargetRaw = options.targetFiles?.[i];
+    const explicitTargetPath = formatPath(explicitTargetRaw || "");
+    let filePath: string;
+    let filename: string;
+    let targetDir = normalizedSaveDir;
+    if (explicitTargetPath) {
+      filePath = explicitTargetPath;
+      filename = PathUtils.filename(filePath);
+      const explicitDir = formatPath(PathUtils.parent(filePath) || "");
+      targetDir = explicitDir || normalizedSaveDir;
+      await ensureDir(targetDir);
+    } else {
+      let derivedName = await addon.api.sync.getMDFileName(
+        noteItem.id,
+        normalizedSaveDir,
+      );
+      derivedName = await maybeRenameManagedSyncFile(
+        noteItem,
+        normalizedSaveDir,
+        derivedName,
+      );
+      filename = derivedName;
+      targetDir = normalizedSaveDir;
+      await ensureDir(targetDir);
+      filePath = jointPath(targetDir, filename);
+    }
+    if (!filePath) {
+      i += 1;
+      continue;
+    }
     const useManagedExport = await shouldUseManagedObsidianExport(
       noteItem,
       filePath,
@@ -222,7 +260,7 @@ export async function syncMDBatch(
       : "";
     const managedContent = useManagedExport
       ? await addon.api.obsidian.renderMarkdown(noteItem, {
-          noteDir: saveDir,
+          noteDir: targetDir,
           attachmentDir,
           attachmentFolder,
           targetPath: filePath,
@@ -231,7 +269,7 @@ export async function syncMDBatch(
       : "";
     const content =
       managedContent ||
-      (await addon.api.convert.note2md(noteItem, saveDir, {
+      (await addon.api.convert.note2md(noteItem, targetDir, {
         keepNoteLink: false,
         withYAMLHeader: true,
         cachedYAMLHeader: metaList?.[i],
@@ -245,7 +283,7 @@ export async function syncMDBatch(
     const fileStat = await IOUtils.stat(filePath);
     const batchMDStatus = addon.api.sync.getMDStatusFromContent(content);
     addon.api.sync.updateSyncStatus(noteItem.id, {
-      path: saveDir,
+      path: targetDir,
       filename,
       itemID: noteItem.id,
       md5: Zotero.Utilities.Internal.md5(

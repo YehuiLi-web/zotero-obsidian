@@ -11,6 +11,7 @@ import {
   hasFrontmatterKey,
   isPlainObject,
   normalizeMarkdown,
+  parseExtraMap,
   updateExtraField,
   yamlQuote,
 } from "./shared";
@@ -29,6 +30,7 @@ const MANAGED_FRONTMATTER_RESERVED_KEYS = new Set([
   "year",
   "doi",
   "citation_key",
+  "citekey",
   "publication",
   "item_link",
   "pdf_link",
@@ -176,6 +178,7 @@ function buildManagedFrontmatterData(
 ) {
   const year = Number.parseInt(cleanInline(context.dateY), 10);
   const selectedFields = new Set(getManagedFrontmatterFields());
+  const extraMap = parseExtraMap(getFieldSafe(topItem, "extra"));
   const status = cleanInline(
     firstValue(
       context.reading_status,
@@ -207,6 +210,28 @@ function buildManagedFrontmatterData(
     $version: noteItem.version,
     $libraryID: noteItem.libraryID,
   };
+  let citationKeyValue = cleanInline(
+    String(
+      firstValue(
+        context.citationKey,
+        context.citekey,
+        getFieldSafe(topItem, "citationKey"),
+        extraMap.citationKey,
+      ) || "",
+    ),
+  );
+  if (!citationKeyValue) {
+    citationKeyValue = cleanInline(
+      context.uniqueKey ||
+        context.qnkey ||
+        context.key ||
+        getFieldSafe(topItem, "key"),
+    );
+  }
+  if (citationKeyValue) {
+    frontmatter.citation_key = citationKeyValue;
+    frontmatter.citekey = citationKeyValue;
+  }
   if (selectedFields.has("titleTranslation")) {
     const titleTranslation = cleanInline(context.titleTranslation);
     if (titleTranslation) {
@@ -242,12 +267,7 @@ function buildManagedFrontmatterData(
       frontmatter.doi = doi;
     }
   }
-  if (selectedFields.has("citationKey")) {
-    const citationKey = cleanInline(context.citationKey);
-    if (citationKey) {
-      frontmatter.citation_key = citationKey;
-    }
-  }
+  // `citation_key` is always written when available; `selectedFields` no longer gates it.
   if (selectedFields.has("publication")) {
     const publication = cleanInline(
       firstValue(

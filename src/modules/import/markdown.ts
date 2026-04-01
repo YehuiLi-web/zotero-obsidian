@@ -2,6 +2,7 @@ import { addLineToNote } from "../../utils/note";
 import { config } from "../../../package.json";
 import { rememberWatchedFileState } from "../sync/watcher";
 import { normalizeFrontmatterObject } from "../obsidian/frontmatter";
+import { refreshFrontmatterIndexEntry } from "../obsidian/frontmatterIndex";
 import {
   GENERATED_BLOCK_START,
   USER_BLOCK_START,
@@ -219,6 +220,11 @@ export async function fromMD(
       fileLastModified: mdStatus.lastmodify.getTime(),
       lastsync: Date.now(),
     });
+    await refreshFrontmatterIndexEntry(
+      filepath,
+      mdStatus.meta,
+      mdStatus.lastmodify?.getTime?.() || Date.now(),
+    );
     if (options.recordHistory !== false && !skippedManagedBodyImport) {
       addon.api.sync.recordNoteHistory(noteItem, filepath, {
         beforeText: beforeNoteText,

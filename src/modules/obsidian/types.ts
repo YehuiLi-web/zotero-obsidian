@@ -114,5 +114,6 @@ export interface MetadataPresetEditorState {
   sectionKey: MetadataSectionKey;
   searchText: string;
   sortSelectedFirst: boolean;
+  onlyConfigured: boolean;
   draftPreset: MetadataPreset;
 }

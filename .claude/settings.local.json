@@ -16,7 +16,17 @@
       "Bash(find E:/obsidian_zotero/zotero-obsidian/addon/chrome/content -name *.xhtml -o -name preferences.xhtml)",
       "WebSearch",
       "WebFetch(domain:github.com)",
-      "WebFetch(domain:raw.githubusercontent.com)"
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(curl:*)",
+      "Bash(grep -oP '\\(?<=\\\\\\\\u003c\\)[a-zA-Z][a-zA-Z0-9]*' \"E:/obsidian_zotero/zotero-obsidian/src/modules/obsidian/prefsUI/layout.ts\")",
+      "Bash(grep -oE '\\\\\\\\\\\\\\\\u003c[a-zA-Z][a-zA-Z0-9]*' \"E:/obsidian_zotero/zotero-obsidian/src/modules/obsidian/prefsUI/layout.ts\")",
+      "Bash(node -e \":*)",
+      "Bash(node:*)",
+      "Bash(grep -l \"__addonRef__\\\\|__addonName__\" /e/obsidian_zotero/zotero-obsidian/addon/chrome/content/*.xhtml)",
+      "Bash(grep -r \"Zotero\\\\[\" /e/obsidian_zotero/zotero-obsidian/build/addon/chrome/content/*.js)",
+      "Bash(grep -v \"//.*__addonRef__\")",
+      "Bash(node -e \"const pkg = require\\(''''./package.json''''\\); console.log\\(''''addonRef:'''', pkg.config.addonRef, ''''addonInstance:'''', pkg.config.addonInstance\\)\")",
+      "Bash(find E:/obsidian_zotero/zotero-obsidian/addon -name *preferences* -o -name *pref*)"
     ]
   }
 }

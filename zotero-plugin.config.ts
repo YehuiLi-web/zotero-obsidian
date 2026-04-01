@@ -2,6 +2,7 @@ import pkg from "./package.json";
 import { defineConfig } from "zotero-plugin-scaffold";
 import { replaceInFile } from "replace-in-file";
 import { bundleTypes } from "./scripts/types/bundleTypes.mjs";
+import { promises as fs } from "fs";
 
 const TEST_PREFS = {};
 const README_RELEASE_LINE = /^- \[Version .*\]\(.*\)$/gm;
@@ -53,6 +54,17 @@ export default defineConfig({
         bundle: true,
         target: ["firefox115"],
       },
+      {
+        entryPoints: [
+          "src/modules/preferences/resources/preferencesPane.ts",
+        ],
+        define: {
+          __env__: `"${process.env.NODE_ENV}"`,
+        },
+        bundle: true,
+        target: ["firefox115"],
+        outfile: "build/addon/chrome/content/preferencesPane.js",
+      },
     ],
     prefs: {
       prefix: pkg.config.prefsPrefix,
@@ -67,6 +79,26 @@ export default defineConfig({
           }) as Promise<any>,
           bundleTypes(),
         ]);
+        const targetDir = "build/addon/chrome/content";
+        await fs.mkdir(targetDir, { recursive: true });
+        await fs.copyFile(
+          "src/modules/preferences/resources/preferences.xhtml",
+          `${targetDir}/preferences.xhtml`,
+        );
+        await replaceInFile({
+          files: [`${targetDir}/preferences.xhtml`],
+          from: [/__addonRef__/g, /data-l10n-id="([^"]+)"/g],
+          to: [
+            pkg.config.addonRef,
+            `data-l10n-id="${pkg.config.addonRef}-$1"`,
+          ],
+        } as any);
+        const stylesDir = `${targetDir}/styles`;
+        await fs.mkdir(stylesDir, { recursive: true });
+        await fs.copyFile(
+          "src/modules/preferences/resources/preferences.css",
+          `${stylesDir}/preferences.css`,
+        );
         return;
       },
     },

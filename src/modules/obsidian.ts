@@ -6,7 +6,7 @@ export {
   resetObsidianMetadataPreset,
   runObsidianSetupWizard,
   saveObsidianMetadataPreset,
-} from "./obsidian/prefsUI";
+} from "./preferences/compat/obsidian";
 export { setupObsidianDashboards } from "./obsidian/dashboard";
 export {
   writeObsidianConnectionTestFile,

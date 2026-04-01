@@ -5,3 +5,5 @@ build
 dist
 logs
 *.log
+src/**/*.js
+src/**/*.js.map

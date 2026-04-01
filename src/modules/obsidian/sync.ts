@@ -1,7 +1,7 @@
 import { showHint, showHintWithLink } from "../../utils/hint";
 import { getString } from "../../utils/locale";
 import { getPref } from "../../utils/prefs";
-import { fileExists, jointPath } from "../../utils/str";
+import { fileExists, formatPath, jointPath } from "../../utils/str";
 import { setupObsidianDashboards } from "./dashboard";
 import {
   ensureObsidianSettings,
@@ -17,14 +17,24 @@ import {
   normalizeChildNoteTag,
 } from "./childNotes";
 import { normalizeFrontmatterObject } from "./frontmatter";
-import { findExistingObsidianNote, openObsidianNote } from "./paths";
+import {
+  rebuildFrontmatterIndex,
+  refreshFrontmatterIndexEntry,
+  resolveNoteByFrontmatter,
+} from "./frontmatterIndex";
+import {
+  openObsidianNote,
+  resolveManagedNote,
+  resolveManagedNoteBinding,
+  getCitationKeyForItem,
+} from "./paths";
 import {
   getItemMapKey,
   getObsidianItemNoteMap,
   resolveObsidianItemTemplateName,
   setObsidianItemNoteMap,
 } from "./settings";
-import { cleanInline } from "./shared";
+import { cleanInline, getFieldSafe, parseExtraMap } from "./shared";
 import {
   getChildNoteTags,
   getManagedObsidianFileName,
@@ -170,7 +180,7 @@ async function findManagedRecoveryCandidates(
         }
       }
 
-      if (findExistingObsidianNote(topItem)) {
+      if (await resolveManagedNote(topItem)) {
         return;
       }
 
@@ -196,7 +206,7 @@ async function recoverManagedObsidianNoteFromFile(
   candidate: ManagedRecoveryCandidate,
   settings: ObsidianSettings,
 ) {
-  const existingNote = findExistingObsidianNote(candidate.topItem);
+  const existingNote = await resolveManagedNote(candidate.topItem);
   if (existingNote) {
     return existingNote;
   }
@@ -252,6 +262,7 @@ async function recoverManagedObsidianNoteFromFile(
     recordHistory: false,
     historyReason: "managed-recovery-refresh",
   });
+  await refreshFrontmatterIndexEntry(candidate.filepath);
   return noteItem;
 }
 
@@ -259,12 +270,24 @@ async function ensureManagedObsidianNote(
   topItem: Zotero.Item,
   settings: ObsidianSettings,
 ) {
-  const existingNote = findExistingObsidianNote(topItem);
+  const existingNote = await resolveManagedNote(topItem);
   if (existingNote) {
     return existingNote;
   }
 
   if (settings.notesDir && (await fileExists(settings.notesDir))) {
+    const binding = await resolveManagedNoteBinding(topItem);
+    if (binding.entry?.path) {
+      const mdStatus = await addon.api.sync.getMDStatus(binding.entry.path);
+      return recoverManagedObsidianNoteFromFile(
+        {
+          topItem,
+          filepath: binding.entry.path,
+          mdStatus,
+        },
+        settings,
+      );
+    }
     const recoveryCandidate = (
       await findManagedRecoveryCandidates(settings.notesDir, [topItem])
     ).get(getItemMapKey(topItem));
@@ -305,10 +328,44 @@ async function maybeRenameLegacySyncedFile(
   return desiredFilename;
 }
 
+async function resolveManagedPathFromFrontmatter(
+  noteItem: Zotero.Item,
+  notesDir?: string,
+) {
+  if (!notesDir || !(await fileExists(notesDir))) {
+    return "";
+  }
+  if (!noteItem?.parentItem?.isRegularItem()) {
+    return "";
+  }
+  const topItem = noteItem.parentItem;
+  const citekey = getCitationKeyForItem(topItem);
+  const zoteroKey = cleanInline(String(topItem.key || ""));
+  const noteKey = cleanInline(String(noteItem.key || ""));
+  const resolution = await resolveNoteByFrontmatter({
+    citekey,
+    zoteroKey,
+    libraryID: topItem.libraryID,
+    noteKey,
+    notesDir,
+  });
+  if (resolution?.path) {
+    return formatPath(resolution.path);
+  }
+  return "";
+}
+
 async function getManagedTargetPath(
   noteItem: Zotero.Item,
   settings: ObsidianSettings,
 ) {
+  const frontmatterPath = await resolveManagedPathFromFrontmatter(
+    noteItem,
+    settings.notesDir,
+  );
+  if (frontmatterPath) {
+    return frontmatterPath;
+  }
   let filename =
     (await getManagedObsidianFileNameFresh(noteItem)) ||
     getManagedObsidianFileName(noteItem) ||
@@ -323,6 +380,14 @@ async function getManagedTargetPath(
 
 async function resolveManagedObsidianTargetPath(noteItem: Zotero.Item) {
   const syncStatus = addon.api.sync.getSyncStatus(noteItem.id);
+  const notesDirPref = String(getPref("obsidian.notesDir") || "").trim();
+  const frontmatterPath = await resolveManagedPathFromFrontmatter(
+    noteItem,
+    notesDirPref,
+  );
+  if (frontmatterPath && (await fileExists(frontmatterPath))) {
+    return frontmatterPath;
+  }
   const syncedTargetPath =
     syncStatus.path && syncStatus.filename
       ? jointPath(syncStatus.path, syncStatus.filename)
@@ -331,7 +396,7 @@ async function resolveManagedObsidianTargetPath(noteItem: Zotero.Item) {
     return syncedTargetPath;
   }
 
-  const notesDir = String(getPref("obsidian.notesDir") || "").trim();
+  const notesDir = notesDirPref;
   if (!notesDir) {
     return "";
   }
@@ -362,6 +427,7 @@ async function exportManagedObsidianNotes(
         attachmentDir: settings.assetsDir,
         attachmentFolder: settings.attachmentFolder,
         historyReason: "obsidian-sync",
+        targetFiles,
       },
     );
   } else {
@@ -373,6 +439,12 @@ async function exportManagedObsidianNotes(
         attachmentFolder: settings.attachmentFolder,
         historyReason: "obsidian-sync",
       });
+    }
+  }
+
+  for (const targetPath of targetFiles) {
+    if (targetPath) {
+      await refreshFrontmatterIndexEntry(targetPath);
     }
   }
 
@@ -498,7 +570,7 @@ async function repairObsidianManagedLinks(
       settings.notesDir,
     );
     for (const candidate of recoveryCandidates.values()) {
-      if (findExistingObsidianNote(candidate.topItem)) {
+      if (await resolveManagedNote(candidate.topItem)) {
         continue;
       }
       const recoveredNote = await recoverManagedObsidianNoteFromFile(
@@ -612,6 +684,10 @@ async function repairObsidianManagedLinks(
     }
   }
 
+  if (settings?.notesDir && (await fileExists(settings.notesDir))) {
+    await rebuildFrontmatterIndex(settings.notesDir);
+  }
+
   return result;
 }
 
@@ -624,7 +700,7 @@ async function resyncAllManagedObsidianNotes(successMessage?: string) {
         settings.notesDir,
       );
       for (const candidate of recoveryCandidates.values()) {
-        if (findExistingObsidianNote(candidate.topItem)) {
+        if (await resolveManagedNote(candidate.topItem)) {
           continue;
         }
         noteItems = [
@@ -975,7 +1051,7 @@ async function syncSelectedItemsToObsidian() {
       const topItem = selectedItems[0];
       const confirmed = await promptChildNotesForSingleItemSync(
         topItem,
-        findExistingObsidianNote(topItem),
+        await resolveManagedNote(topItem),
       );
       if (!confirmed) {
         return;
@@ -1035,7 +1111,7 @@ async function openItemsInObsidian(items: Zotero.Item[]) {
     return;
   }
 
-  const noteItem = findExistingObsidianNote(topItem);
+  const noteItem = await resolveManagedNote(topItem);
   const targetPath = noteItem
     ? await resolveManagedObsidianTargetPath(noteItem)
     : "";

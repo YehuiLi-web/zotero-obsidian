@@ -3,6 +3,12 @@ export * from "./frontmatter";
 export * from "./markdown";
 export * from "./childNotes";
 export {
+  ensureFrontmatterIndex,
+  rebuildFrontmatterIndex,
+  refreshFrontmatterIndexEntry,
+  resolveNoteByFrontmatter,
+} from "./frontmatterIndex";
+export {
   getDefaultDashboardDir,
   splitComparablePath,
   isSamePathSegment,

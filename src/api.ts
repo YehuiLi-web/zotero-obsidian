@@ -101,17 +101,19 @@ import {
   getManagedObsidianFileName,
   getManagedObsidianSourceHash,
   isManagedObsidianNote,
-  pickObsidianPath,
   repairObsidianManagedLinks,
-  refreshObsidianPrefsUI,
   extractManagedObsidianUserMarkdown,
   renderManagedObsidianNoteMarkdown,
-  resetObsidianMetadataPreset,
-  saveObsidianMetadataPreset,
   setupObsidianDashboards,
   syncSelectedItemsToObsidian,
   writeObsidianConnectionTestFile,
 } from "./modules/obsidian";
+import {
+  pickObsidianPath,
+  refreshObsidianPrefsUI,
+  resetObsidianMetadataPreset,
+  saveObsidianMetadataPreset,
+} from "./modules/preferences/compat/obsidian";
 
 const workspace = {
   getWorkspaceByUID,

@@ -14,6 +14,10 @@ import {
   DEFAULT_OBSIDIAN_FILE_NAME_TEMPLATE,
   OBSIDIAN_FILE_NAME_TEMPLATE_PREF,
 } from "./settings";
+import {
+  FrontmatterIndexEntry,
+  resolveNoteByFrontmatter,
+} from "./frontmatterIndex";
 
 function getDefaultDashboardDir(vaultRoot: string, notesDir = "") {
   const normalizedVaultRoot = formatPath(vaultRoot);
@@ -21,8 +25,9 @@ function getDefaultDashboardDir(vaultRoot: string, notesDir = "") {
     return jointPath(normalizedVaultRoot, "dashboards", "zotero");
   }
   const normalizedNotesDir = formatPath(notesDir);
-  const fallbackRoot =
-    PathUtils.parent(normalizedNotesDir) || normalizedNotesDir;
+  const fallbackRoot = normalizedNotesDir
+    ? PathUtils.parent(normalizedNotesDir) || normalizedNotesDir
+    : "";
   return fallbackRoot ? jointPath(fallbackRoot, "dashboards", "zotero") : "";
 }
 
@@ -394,6 +399,70 @@ function buildManagedObsidianFileName(
   return ensureMarkdownExtension(fileName || fallbackBaseName);
 }
 
+function getCitationKeyForItem(topItem: Zotero.Item) {
+  if (!topItem?.isRegularItem()) {
+    return "";
+  }
+  const direct = cleanInline(String(getFieldSafe(topItem, "citationKey") || ""));
+  if (direct) {
+    return direct;
+  }
+  const extraMap = parseExtraMap(getFieldSafe(topItem, "extra"));
+  return cleanInline(String(extraMap.citationKey || ""));
+}
+
+async function resolveManagedNoteBinding(topItem: Zotero.Item) {
+  if (!topItem?.isRegularItem()) {
+    return { noteItem: null, entry: null } as {
+      noteItem: Zotero.Item | null;
+      entry: FrontmatterIndexEntry | null;
+    };
+  }
+  const notesDir = String(getPref("obsidian.notesDir") || "").trim();
+  const citekey = getCitationKeyForItem(topItem);
+  const resolution = await resolveNoteByFrontmatter({
+    citekey,
+    zoteroKey: topItem.key,
+    libraryID: topItem.libraryID,
+    notesDir,
+  });
+  if (!resolution) {
+    return { noteItem: null, entry: null };
+  }
+  const entry = resolution.entry;
+  let noteItem: Zotero.Item | null = null;
+  if (entry.noteKey) {
+    const candidate = Zotero.Items.getByLibraryAndKey(
+      entry.libraryID || topItem.libraryID,
+      entry.noteKey,
+    ) as Zotero.Item | false;
+    if (
+      candidate &&
+      candidate.isNote() &&
+      !candidate.deleted &&
+      candidate.parentID === topItem.id
+    ) {
+      noteItem = candidate;
+      const itemNoteMap = getObsidianItemNoteMap();
+      const itemMapKey = getItemMapKey(topItem);
+      if (itemNoteMap[itemMapKey] !== noteItem.key) {
+        itemNoteMap[itemMapKey] = noteItem.key;
+        setObsidianItemNoteMap(itemNoteMap);
+      }
+    }
+  }
+  return { noteItem, entry };
+}
+
+async function resolveManagedNote(topItem: Zotero.Item) {
+  const mappedNote = findExistingObsidianNote(topItem);
+  if (mappedNote) {
+    return mappedNote;
+  }
+  const { noteItem } = await resolveManagedNoteBinding(topItem);
+  return noteItem || false;
+}
+
 function findExistingObsidianNote(topItem: Zotero.Item) {
   const itemNoteMap = getObsidianItemNoteMap();
   const itemMapKey = getItemMapKey(topItem);
@@ -448,5 +517,8 @@ export {
   applyManagedFileNameTemplate,
   getManagedFileNamePattern,
   buildManagedObsidianFileName,
+  getCitationKeyForItem,
+  resolveManagedNoteBinding,
+  resolveManagedNote,
   findExistingObsidianNote,
 };

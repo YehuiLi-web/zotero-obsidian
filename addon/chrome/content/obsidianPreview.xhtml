@@ -1,0 +1,81 @@
+<?xml version="1.0"?>
+<!-- prettier-ignore -->
+<?xml-stylesheet href="chrome://global/skin/" type="text/css"?>
+<!-- prettier-ignore -->
+<?xml-stylesheet href="chrome://zotero/skin/zotero.css" type="text/css"?>
+<!-- prettier-ignore -->
+<?xml-stylesheet href="chrome://zotero-platform/content/zotero-react-client.css" type="text/css"?>
+<!-- prettier-ignore -->
+<?xml-stylesheet href="chrome://zotero-platform/content/zotero.css" type="text/css"?>
+<!-- prettier-ignore -->
+<!DOCTYPE html>
+<html
+  id="__addonRef__-obsidianPreview"
+  lang="en"
+  xmlns="http://www.w3.org/1999/xhtml"
+  xmlns:xul="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
+  xmlns:html="http://www.w3.org/1999/xhtml"
+  windowtype="__addonRef__-obsidianPreview"
+  sizemode="normal"
+  scrolling="false"
+  persist="screenX screenY width height sizemode"
+>
+  <head>
+    <title>Obsidian Preview</title>
+    <meta charset="utf-8" />
+    <meta name="referrer" content="no-referrer" />
+    <xul:commandset id="mainCommandSet">
+      <xul:command id="cmd_close" oncommand="window.close();" />
+    </xul:commandset>
+    <xul:keyset id="mainKeyset">
+      <xul:key
+        id="key_close"
+        command="cmd_close"
+        modifiers="accel"
+        reserved="true"
+        key="w"
+      />
+    </xul:keyset>
+    <script><![CDATA[
+      document.addEventListener("DOMContentLoaded", async () => {
+        let rawArgs = null;
+        let dialogArgs = null;
+        if (window.arguments) {
+          rawArgs = window.arguments[0];
+        }
+        dialogArgs = rawArgs;
+        if (rawArgs && rawArgs.wrappedJSObject) {
+          dialogArgs = rawArgs.wrappedJSObject;
+        }
+        if (!dialogArgs) {
+          return;
+        }
+        try {
+          if (dialogArgs.mount) {
+            await dialogArgs.mount(window);
+          }
+        } catch (error) {
+          document.getElementById("obsidian-preview-root").textContent =
+            "Preview mount failed: " + error;
+        } finally {
+          dialogArgs._initPromise?.resolve?.();
+        }
+      });
+    ]]></script>
+    <link
+      rel="stylesheet"
+      href="chrome://__addonRef__/content/lib/css/github-markdown.css"
+    />
+    <link
+      rel="stylesheet"
+      href="chrome://__addonRef__/content/lib/css/katex.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="chrome://__addonRef__/content/styles/obsidianPreview.css"
+    />
+  </head>
+  <body class="zotero-window">
+    <div id="obsidian-preview-root">Loading preview…</div>
+  </body>
+</html>

@@ -1,9 +1,10 @@
 import { config } from "../package.json";
 import { initLocale } from "./utils/locale";
 import {
-  registerPrefsScripts,
-  registerPrefsWindow,
-} from "./modules/preferenceWindow";
+  handlePrefsEvent,
+  registerPreferencesPane,
+} from "./modules/preferences";
+import { getPref } from "./utils/prefs";
 import { registerNoteLinkProxyHandler } from "./modules/noteLink";
 import {
   registerEditorInstanceHook,
@@ -56,18 +57,70 @@ import { patchNoteEditorCE } from "./modules/patches/noteEditor";
 import { patchNotes } from "./modules/patches/notes";
 import {
   getManagedObsidianNoteForItem,
-  pickObsidianItemTemplate,
   openItemsInObsidian,
-  pickObsidianPath,
-  maybeAutoRunObsidianSetupWizard,
   repairObsidianManagedLinks,
-  refreshObsidianPrefsUI,
-  resetObsidianMetadataPreset,
-  saveObsidianMetadataPreset,
   setupObsidianDashboards,
   syncSelectedItemsToObsidian,
   initObsidianStorage,
 } from "./modules/obsidian";
+import { deriveObsidianPathDefaults } from "./modules/obsidian/settings";
+import { ensureFrontmatterIndex } from "./modules/obsidian/frontmatterIndex";
+import {
+  maybeAutoRunObsidianSetupWizard,
+  pickObsidianItemTemplate,
+  pickObsidianPath,
+  refreshObsidianPrefsUI,
+  resetObsidianMetadataPreset,
+  saveObsidianMetadataPreset,
+} from "./modules/preferences/compat/obsidian";
+
+let frontmatterIndexPrimePromise: Promise<void> | null = null;
+
+function resolveConfiguredNotesDir() {
+  const notesDirPref = String(getPref("obsidian.notesDir") || "").trim();
+  if (notesDirPref) {
+    return notesDirPref;
+  }
+  const vaultRoot = String(getPref("obsidian.vaultRoot") || "").trim();
+  if (!vaultRoot) {
+    return "";
+  }
+  try {
+    const defaults = deriveObsidianPathDefaults(vaultRoot);
+    return defaults.notesDir || "";
+  } catch (error) {
+    ztoolkit.log(
+      "[ObsidianBridge] failed to derive default notes directory",
+      error,
+    );
+    return "";
+  }
+}
+
+async function primeFrontmatterIndex() {
+  if (frontmatterIndexPrimePromise) {
+    return frontmatterIndexPrimePromise;
+  }
+  frontmatterIndexPrimePromise = (async () => {
+    const notesDir = resolveConfiguredNotesDir();
+    if (!notesDir) {
+      return;
+    }
+    try {
+      await ensureFrontmatterIndex(notesDir);
+    } catch (error) {
+      ztoolkit.log(
+        "[ObsidianBridge] failed to prime frontmatter index",
+        error,
+      );
+    }
+  })();
+  try {
+    await frontmatterIndexPrimePromise;
+  } finally {
+    frontmatterIndexPrimePromise = null;
+  }
+}
 
 async function onStartup() {
   await Promise.all([
@@ -87,7 +140,7 @@ async function onStartup() {
 
   registerEditorInstanceHook();
 
-  registerPrefsWindow();
+  registerPreferencesPane();
 
   registerReaderAnnotationButton();
 
@@ -99,6 +152,7 @@ async function onStartup() {
   patchNotes();
 
   await initObsidianStorage();
+  void primeFrontmatterIndex();
 
   initSyncList();
   initSyncHistory();
@@ -284,14 +338,7 @@ async function onNotify(
  * @param data event data
  */
 async function onPrefsEvent(type: string, data: { [key: string]: any }) {
-  switch (type) {
-    case "load":
-      registerPrefsScripts(data.window);
-      refreshObsidianPrefsUI();
-      break;
-    default:
-      return;
-  }
+  handlePrefsEvent(type, data);
 }
 
 interface OpenNoteReturns {

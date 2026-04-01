@@ -58,6 +58,7 @@ import {
   getFieldSafe,
   hasFrontmatterKey,
   normalizeStableValue,
+  parseExtraMap,
   stableJSONStringify,
   updateExtraField,
 } from "./shared";
@@ -140,6 +141,31 @@ async function applyManagedObsidianFrontmatter(
           topItem.setField("extra", nextExtra);
           dirty = true;
         }
+      }
+    }
+  }
+
+  if (
+    hasFrontmatterKey(normalizedMeta, "citekey") ||
+    hasFrontmatterKey(normalizedMeta, "citation_key")
+  ) {
+    const desiredCitationKey = cleanInline(
+      firstValue(normalizedMeta.citekey, normalizedMeta.citation_key),
+    );
+    const currentExtra = getFieldSafe(topItem, "extra");
+    const extraMap = parseExtraMap(currentExtra);
+    const currentCitationKey = cleanInline(
+      firstValue(getFieldSafe(topItem, "citationKey"), extraMap.citationKey),
+    );
+    if (desiredCitationKey && desiredCitationKey !== currentCitationKey) {
+      const nextExtra = updateExtraField(
+        currentExtra,
+        "citationKey",
+        desiredCitationKey,
+      );
+      if (nextExtra !== currentExtra) {
+        topItem.setField("extra", nextExtra);
+        dirty = true;
       }
     }
   }

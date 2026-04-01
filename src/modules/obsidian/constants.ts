@@ -43,6 +43,8 @@ export const DEFAULT_OBSIDIAN_ITEM_TEMPLATE = OBSIDIAN_ITEM_NOTE_TEMPLATE;
 export const DEFAULT_OBSIDIAN_FILE_NAME_TEMPLATE = "{{title}} -- {{uniqueKey}}";
 export const OBSIDIAN_CONNECTION_TEST_FILE_NAME = "Obsidian Bridge Test.md";
 export const OBSIDIAN_ITEM_NOTE_MAP_FILE_NAME = "obsidian-bridge-map.json";
+export const OBSIDIAN_FRONTMATTER_INDEX_FILE_NAME =
+  "obsidian-bridge-map-v2.json";
 export const OBSIDIAN_METADATA_PRESET_FILE_NAME = "obsidian-bridge-presets.json";
 export const DEFAULT_METADATA_PRESET_ID = "default";
 export const OBSIDIAN_PREFS_RENDER_RETRY_LIMIT = 12;
@@ -187,6 +189,8 @@ export const FIXED_MANAGED_FRONTMATTER_KEYS = [
   "title",
   "zotero_key",
   "zotero_note_key",
+  "citation_key",
+  "citekey",
   "tags",
   "status",
   "reading_status",

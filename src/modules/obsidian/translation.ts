@@ -71,10 +71,12 @@ async function runExternalTranslation(
   raw: string,
   itemID: number,
 ) {
+  ztoolkit.log("[OB translation] calling api.translate, raw:", raw.slice(0, 50), "itemID:", itemID);
   const task = await api.translate(raw, {
     pluginID: config.addonID,
     itemID,
   });
+  ztoolkit.log("[OB translation] task result:", task?.result?.slice(0, 50), "status:", task?.status);
   const result = normalizeTranslationResult(task?.result);
   if (task?.status && task.status !== "success") {
     throw new Error(result || "Translation task failed.");
@@ -99,8 +101,20 @@ async function fillMissingTranslationsForItem(
   const abstractNote = String(topItem.getField("abstractNote") || "").trim();
   const currentExtra = getFieldSafe(topItem, "extra");
   let nextExtra = currentExtra;
+  const existingTitle = getExistingTranslation(topItem, "titleTranslation");
+  const existingAbstract = getExistingTranslation(topItem, "abstractTranslation");
 
-  if (config.includeTitle && title && !getExistingTranslation(topItem, "titleTranslation")) {
+  ztoolkit.log(
+    "[OB translation] item:", topItem.id,
+    "title:", title,
+    "abstract:", abstractNote.slice(0, 40),
+    "existingTitle:", existingTitle,
+    "existingAbstract:", existingAbstract,
+    "includeTitle:", config.includeTitle,
+    "includeAbstract:", config.includeAbstract,
+  );
+
+  if (config.includeTitle && title && !existingTitle) {
     try {
       const translatedTitle = await runExternalTranslation(api, title, topItem.id);
       nextExtra = updateExtraField(nextExtra, "titleTranslation", translatedTitle);
@@ -116,7 +130,7 @@ async function fillMissingTranslationsForItem(
   if (
     config.includeAbstract &&
     abstractNote &&
-    !getExistingTranslation(topItem, "abstractTranslation")
+    !existingAbstract
   ) {
     try {
       const translatedAbstract = await runExternalTranslation(
@@ -138,12 +152,15 @@ async function fillMissingTranslationsForItem(
   }
 
   if (nextExtra !== currentExtra) {
+    ztoolkit.log("[OB translation] saving extra for item:", topItem.id, "nextExtra:", nextExtra.slice(0, 100));
     topItem.setField("extra", nextExtra);
     await topItem.saveTx({
       notifierData: {
         skipOB: true,
       },
     });
+  } else {
+    ztoolkit.log("[OB translation] no changes to extra for item:", topItem.id);
   }
 
   return report;
@@ -159,11 +176,19 @@ export async function autofillMissingMetadataTranslations(
     warnings: [],
   };
 
+  ztoolkit.log(
+    "[OB translation] config:",
+    JSON.stringify(config),
+    "hasWork:",
+    hasTranslationAutofillWork(config),
+  );
+
   if (!hasTranslationAutofillWork(config)) {
     return report;
   }
 
   const api = getTranslateForZoteroAPI();
+  ztoolkit.log("[OB translation] api available:", Boolean(api));
   if (!api) {
     report.warnings.push({
       code: "unavailable",

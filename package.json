@@ -16,11 +16,12 @@
     "build": "tsc --noEmit && zotero-plugin build && node ./scripts/pack-xpi.cjs",
     "build-dev": "tsc --noEmit && zotero-plugin build --dev && node ./scripts/pack-xpi.cjs --name zotero-obsidian-bridge-dev",
     "release": "zotero-plugin release",
-    "lint": "prettier --write . && eslint . --ext .ts --fix",
+    "lint": "npm run check:prefs-xml && prettier --write . && eslint . --ext .ts --fix",
     "test:preflight": "node ./scripts/test-preflight.cjs",
     "test:runtime": "node ./scripts/test-runtime-prepare.cjs && zotero-plugin test --abort-on-fail --exit-on-finish",
     "test": "npm run test:preflight && npm run test:runtime",
     "test-dev": "npm run test:preflight && node ./scripts/test-runtime-prepare.cjs && zotero-plugin test --abort-on-fail",
+    "check:prefs-xml": "node ./scripts/check-preferences-xml.mjs",
     "update-deps": "npm update --save"
   },
   "repository": {
@@ -79,6 +80,7 @@
     "@types/yamljs": "^0.2.34",
     "@typescript-eslint/eslint-plugin": "^6.21.0",
     "@typescript-eslint/parser": "^6.21.0",
+    "@xmldom/xmldom": "^0.8.10",
     "chokidar-cli": "^3.0.0",
     "concurrently": "^8.2.2",
     "cross-env": "^7.0.3",
