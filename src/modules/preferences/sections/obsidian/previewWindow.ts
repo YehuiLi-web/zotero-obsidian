@@ -2,7 +2,7 @@ import { config } from "../../../../../package.json";
 import { parseMarkdownFrontmatter } from "../../../obsidian/frontmatter";
 import { renderNoteHTML } from "../../../../utils/note";
 import { formatPath, jointPath } from "../../../../utils/str";
-import { cleanInline } from "../../../obsidian/shared";
+import { cleanInline, XHTML_NS } from "../../../obsidian/shared";
 import { getObsidianResolvedPaths, uiText } from "./helpers";
 import {
   buildPreviewSignature,
@@ -95,6 +95,73 @@ function escapeHTML(value: string) {
     .replace(/'/g, "&#39;");
 }
 
+function clonePreviewNode(
+  targetDoc: Document,
+  sourceNode: Node | null,
+): Node | null {
+  if (!sourceNode) {
+    return null;
+  }
+
+  switch (sourceNode.nodeType) {
+    case 1: {
+      const sourceElement = sourceNode as Element;
+      const localName = cleanInline(
+        sourceElement.localName || "",
+      ).toLowerCase();
+      if (!localName) {
+        return null;
+      }
+
+      const nextElement = targetDoc.createElementNS(
+        sourceElement.namespaceURI || XHTML_NS,
+        localName,
+      );
+      for (const attr of Array.from(sourceElement.attributes || [])) {
+        if (attr.namespaceURI) {
+          nextElement.setAttributeNS(attr.namespaceURI, attr.name, attr.value);
+        } else {
+          nextElement.setAttribute(attr.name, attr.value);
+        }
+      }
+      for (const childNode of Array.from(sourceElement.childNodes)) {
+        const nextChild = clonePreviewNode(targetDoc, childNode);
+        if (nextChild) {
+          nextElement.appendChild(nextChild);
+        }
+      }
+      return nextElement;
+    }
+    case 3:
+      return targetDoc.createTextNode(sourceNode.textContent || "");
+    case 8:
+      return targetDoc.createComment(sourceNode.textContent || "");
+    default:
+      return null;
+  }
+}
+
+function replacePreviewMarkup(target: Element, markup: string) {
+  const targetDoc = target.ownerDocument;
+  const DOMParserCtor = targetDoc.defaultView?.DOMParser || DOMParser;
+  const parser = new DOMParserCtor();
+  const htmlDoc = parser.parseFromString(
+    String(markup || "").trim(),
+    "text/html",
+  );
+  const sourceRoot = htmlDoc.body || htmlDoc.documentElement;
+  const fragment = targetDoc.createDocumentFragment();
+
+  for (const node of Array.from(sourceRoot?.childNodes || [])) {
+    const nextNode = clonePreviewNode(targetDoc, node);
+    if (nextNode) {
+      fragment.appendChild(nextNode);
+    }
+  }
+
+  target.replaceChildren(fragment);
+}
+
 function normalizePropertyText(value: unknown) {
   if (typeof value === "number" || typeof value === "boolean") {
     return String(value);
@@ -102,8 +169,29 @@ function normalizePropertyText(value: unknown) {
   return cleanInline(value);
 }
 
+function sanitizePreviewMarkdown(markdown: string) {
+  return String(markdown || "")
+    .replace(/\r\n/g, "\n")
+    .split("\n")
+    .map((line) => {
+      const trimmed = line.trim();
+      if (/^\^[\w-]+$/.test(trimmed)) {
+        return "";
+      }
+      if (/^\|/.test(trimmed)) {
+        return line.replace(/<\/?(?:div|span|center)[^>]*>/gi, "");
+      }
+      return line;
+    })
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 function isLikelyLink(value: string) {
-  return /^(?:https?|file|zotero|obsidian):/i.test(value) || /^www\./i.test(value);
+  return (
+    /^(?:https?|file|zotero|obsidian):/i.test(value) || /^www\./i.test(value)
+  );
 }
 
 function resolvePropertyHref(value: string, notePath: string) {
@@ -144,7 +232,9 @@ function normalizeCalloutTitle(rawTitle: string) {
 }
 
 function parsePreviewMarkdownSegments(markdown: string) {
-  const lines = String(markdown || "").replace(/\r\n/g, "\n").split("\n");
+  const lines = String(markdown || "")
+    .replace(/\r\n/g, "\n")
+    .split("\n");
   const segments: PreviewSegment[] = [];
   const markdownBuffer: string[] = [];
 
@@ -260,7 +350,10 @@ function renderPropertyValueHTML(value: unknown, notePath: string): string {
   return renderPropertyScalarHTML(value, notePath);
 }
 
-function buildFrontmatterPropertiesHTML(frontmatterMarkdown: string, notePath: string) {
+function buildFrontmatterPropertiesHTML(
+  frontmatterMarkdown: string,
+  notePath: string,
+) {
   const frontmatter = parseMarkdownFrontmatter(frontmatterMarkdown);
   const entries = Object.entries(frontmatter).filter(([key, value]) => {
     if (key === "title") {
@@ -280,22 +373,27 @@ function buildFrontmatterPropertiesHTML(frontmatterMarkdown: string, notePath: s
   }
 
   return `
-    <section class="ob-preview-properties" aria-label="${escapeHTML(
+    <section class="ob-preview-propertiesCard" aria-label="${escapeHTML(
       uiText("笔记属性", "Note properties"),
     )}">
-      ${entries
-        .map(
-          ([key, value]) => `
-            <div class="ob-preview-property">
-              <div class="ob-preview-property__key">${escapeHTML(key)}</div>
-              <div class="ob-preview-property__value">${renderPropertyValueHTML(
-                value,
-                notePath,
-              )}</div>
-            </div>
-          `,
-        )
-        .join("")}
+      <div class="ob-preview-propertiesCard__title">${escapeHTML(
+        uiText("Frontmatter 属性", "Frontmatter"),
+      )}</div>
+      <section class="ob-preview-properties">
+        ${entries
+          .map(
+            ([key, value]) => `
+              <div class="ob-preview-property">
+                <div class="ob-preview-property__key">${escapeHTML(key)}</div>
+                <div class="ob-preview-property__value">${renderPropertyValueHTML(
+                  value,
+                  notePath,
+                )}</div>
+              </div>
+            `,
+          )
+          .join("")}
+      </section>
     </section>
   `.trim();
 }
@@ -305,8 +403,7 @@ function buildCalloutHTML(
   innerHTML: string,
 ) {
   const calloutType = cleanInline(segment.calloutType).toLowerCase() || "note";
-  const title =
-    cleanInline(segment.title) || getCalloutTypeLabel(calloutType);
+  const title = cleanInline(segment.title) || getCalloutTypeLabel(calloutType);
   return `
     <section class="ob-preview-callout ob-preview-callout--${escapeHTML(
       calloutType,
@@ -318,7 +415,7 @@ function buildCalloutHTML(
 }
 
 async function renderMarkdownSegment(content: string) {
-  const normalized = String(content || "").trim();
+  const normalized = sanitizePreviewMarkdown(content);
   if (!normalized) {
     return "";
   }
@@ -461,17 +558,9 @@ async function ensurePreviewWindowPayload(forceRefresh = false) {
 function buildPreviewShellMarkup() {
   return `
     <div class="ob-preview-shell">
-      <header class="ob-preview-header">
-        <div class="ob-preview-header__copy">
-          <div class="ob-preview-eyebrow">${escapeHTML(
-            uiText("Obsidian 联动笔记", "Obsidian Managed Note"),
-          )}</div>
-          <h1 class="ob-preview-title">${escapeHTML(
-            uiText("笔记预览", "Note Preview"),
-          )}</h1>
-          <p class="ob-preview-meta" data-role="meta"></p>
-        </div>
-        <div class="ob-preview-header__actions">
+      <header class="ob-preview-toolbar">
+        <div class="ob-preview-file" data-role="file"></div>
+        <div class="ob-preview-toolbar__actions">
           <button type="button" class="ob-preview-button" data-action="refresh">${escapeHTML(
             uiText("刷新预览", "Refresh Preview"),
           )}</button>
@@ -480,18 +569,6 @@ function buildPreviewShellMarkup() {
           )}</button>
         </div>
       </header>
-
-      <div class="ob-preview-bar">
-        <span class="ob-preview-pill" data-role="status"></span>
-        <span class="ob-preview-file" data-role="file"></span>
-      </div>
-
-      <div class="ob-preview-pathBar">
-        <span class="ob-preview-pathBar__label">${escapeHTML(
-          uiText("预期文件路径", "Expected File Path"),
-        )}</span>
-        <span class="ob-preview-pathBar__value" data-role="path"></span>
-      </div>
 
       <div class="ob-preview-noteFrame">
         <article class="markdown-body ob-preview-note" data-role="rendered"></article>
@@ -510,12 +587,9 @@ async function mountPreviewWindow(
     return;
   }
 
-  root.innerHTML = buildPreviewShellMarkup();
+  replacePreviewMarkup(root, buildPreviewShellMarkup());
 
-  const meta = root.querySelector<HTMLElement>('[data-role="meta"]');
-  const status = root.querySelector<HTMLElement>('[data-role="status"]');
   const file = root.querySelector<HTMLElement>('[data-role="file"]');
-  const notePath = root.querySelector<HTMLElement>('[data-role="path"]');
   const rendered = root.querySelector<HTMLElement>('[data-role="rendered"]');
   const refreshButton = root.querySelector<HTMLButtonElement>(
     '[data-action="refresh"]',
@@ -524,15 +598,8 @@ async function mountPreviewWindow(
     '[data-action="close"]',
   );
 
-  if (
-    !meta ||
-    !status ||
-    !file ||
-    !notePath ||
-    !rendered ||
-    !refreshButton ||
-    !closeButton
-  ) {
+  if (!file || !rendered || !refreshButton || !closeButton) {
+    ztoolkit.log("[obsidian preview] preview shell mount incomplete");
     return;
   }
 
@@ -552,30 +619,25 @@ async function mountPreviewWindow(
       ? `${payload.fileName} · ${uiText("预览", "Preview")}`
       : uiText("Obsidian 预览", "Obsidian Preview");
     root.dataset.status = payload.status;
-    status.className = `ob-preview-pill ob-preview-pill--${payload.status}`;
-    status.textContent = getPreviewStatusLabel(payload.status);
-    meta.textContent = [payload.sourceLabel, payload.message || fallbackMessage]
-      .filter(Boolean)
-      .join(" · ");
     file.textContent =
       payload.fileName ||
       uiText("尚未生成文件名预览", "No filename preview yet");
-    notePath.textContent =
-      payload.notePath ||
-      uiText(
-        "未设置落盘目录，先显示纯预览内容。",
-        "No output path yet. Showing content preview first.",
-      );
+    file.title = [payload.fileName, payload.notePath, payload.sourceLabel]
+      .filter(Boolean)
+      .join("\n");
 
     if (payload.renderedHTML) {
-      rendered.innerHTML = payload.renderedHTML;
+      replacePreviewMarkup(rendered, payload.renderedHTML);
     } else {
-      rendered.innerHTML = `
+      replacePreviewMarkup(
+        rendered,
+        `
         <section class="ob-preview-empty">
           <h2>${escapeHTML(uiText("暂无可渲染内容", "Nothing to render yet"))}</h2>
           <p>${escapeHTML(payload.message || fallbackMessage)}</p>
         </section>
-      `.trim();
+      `.trim(),
+      );
     }
   };
 
@@ -639,7 +701,7 @@ export async function showObsidianPreviewWindow() {
   const previewWindow = Zotero.getMainWindow().openDialog(
     `chrome://${config.addonRef}/content/obsidianPreview.xhtml`,
     `${config.addonRef}-obsidianPreview`,
-    "chrome,centerscreen,resizable,status,dialog=no,width=1240,height=860",
+    "chrome,centerscreen,resizable,status,dialog=no,width=980,height=820",
     windowArgs,
   ) as PreviewHostWindow | null;
 

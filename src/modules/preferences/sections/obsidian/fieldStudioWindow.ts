@@ -136,6 +136,16 @@ function getFieldStudioRoot(doc: Document) {
   return doc.getElementById("field-studio-root") as HTMLDivElement | null;
 }
 
+function getFieldStudioWindowFeatures(tab: FieldStudioTab) {
+  const size =
+    tab === "frontmatter"
+      ? ["width=920", "height=860"]
+      : ["width=980", "height=860"];
+  return ["chrome", "centerscreen", "resizable", "status", "dialog=no"]
+    .concat(size)
+    .join(",");
+}
+
 function cloneStudioNode(targetDoc: Document, sourceNode: Node | null): Node | null {
   if (!sourceNode) {
     return null;
@@ -1160,7 +1170,7 @@ function renderFieldStudio(tab: FieldStudioTab) {
     replaceStudioHTML(
       root,
       `
-        <div class="field-studio field-studio--dense">
+        <div class="field-studio field-studio--dense field-studio--${escapeHTML(tab)}">
           ${tab === "frontmatter" ? renderFrontmatterPanel() : renderMetadataPanel()}
         </div>
       `,
@@ -1416,7 +1426,7 @@ async function ensureFieldStudioWindow(tab: FieldStudioTab) {
   const dialogWindow = Zotero.getMainWindow().openDialog(
     `chrome://${config.addonRef}/content/fieldStudio.xhtml`,
     `${config.addonRef}-fieldStudio-${tab}`,
-    "chrome,centerscreen,resizable,status,dialog=no",
+    getFieldStudioWindowFeatures(tab),
     windowArgs,
   )!;
   _fieldStudioWindows[tab] = dialogWindow;

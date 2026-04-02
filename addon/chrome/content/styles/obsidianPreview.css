@@ -1,7 +1,7 @@
 html,
 body {
   height: 100%;
-  min-width: 820px;
+  min-width: 900px;
   min-height: 560px;
   margin: 0;
   padding: 0;
@@ -11,12 +11,8 @@ body {
   background: var(--material-background, var(--toolbar-bgcolor));
   color: var(--text-color);
   font-family:
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    "PingFang SC",
-    "Microsoft YaHei UI",
-    sans-serif;
+    -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+    "Microsoft YaHei UI", sans-serif;
 }
 
 #obsidian-preview-root {
@@ -28,106 +24,25 @@ body {
   flex-direction: column;
   height: 100%;
   box-sizing: border-box;
-  padding: 16px 18px 18px;
+  padding: 10px 12px 12px;
+  gap: 8px;
+}
+
+.ob-preview-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: stretch;
   gap: 12px;
+  padding: 4px 0 2px;
 }
 
-.ob-preview-header {
+.ob-preview-toolbar__actions {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 16px;
-  padding: 0 0 10px;
-  border-bottom: 1px solid
-    color-mix(
-      in srgb,
-      var(--material-border, rgba(255, 255, 255, 0.14)) 88%,
-      transparent
-    );
-}
-
-.ob-preview-header__copy {
-  min-width: 0;
-}
-
-.ob-preview-eyebrow {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--text-color-deemphasized);
-}
-
-.ob-preview-title {
-  margin: 4px 0 6px;
-  font-size: 24px;
-  line-height: 1.2;
-}
-
-.ob-preview-meta {
-  margin: 0;
-  color: var(--text-color-deemphasized);
-  line-height: 1.5;
-}
-
-.ob-preview-header__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.ob-preview-button {
-  appearance: none;
-  border: 1px solid
-    color-mix(
-      in srgb,
-      var(--material-border, rgba(255, 255, 255, 0.16)) 88%,
-      transparent
-    );
-  background: color-mix(
-    in srgb,
-    var(--material-background, rgba(255, 255, 255, 0.06)) 92%,
-    white 8%
-  );
-  color: var(--text-color);
-  border-radius: 8px;
-  padding: 7px 12px;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.ob-preview-button:hover {
-  background: color-mix(
-    in srgb,
-    var(--material-background, rgba(255, 255, 255, 0.08)) 86%,
-    white 14%
-  );
-}
-
-.ob-preview-button:disabled {
-  opacity: 0.6;
-  cursor: progress;
-}
-
-.ob-preview-button--ghost {
-  background: transparent;
-}
-
-.ob-preview-bar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-}
-
-.ob-preview-pill,
-.ob-preview-file {
-  display: inline-flex;
-  align-items: center;
-  min-height: 30px;
-  border-radius: 8px;
-  padding: 0 10px;
+  align-items: stretch;
+  gap: 6px;
+  flex: none;
+  padding: 4px;
+  border-radius: 14px;
   border: 1px solid
     color-mix(
       in srgb,
@@ -139,67 +54,80 @@ body {
     var(--material-background, rgba(255, 255, 255, 0.03)) 90%,
     white 10%
   );
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
 }
 
-.ob-preview-pill {
-  font-weight: 700;
-}
-
-.ob-preview-pill--ready {
-  color: #8fd19e;
-}
-
-.ob-preview-pill--stale {
-  color: #e5c07b;
-}
-
-.ob-preview-pill--error {
-  color: #f28b82;
-}
-
-.ob-preview-pill--loading,
-.ob-preview-pill--empty {
+.ob-preview-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  appearance: none;
+  border: 1px solid transparent;
+  background: transparent;
   color: var(--text-color-deemphasized);
+  border-radius: 10px;
+  padding: 0 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease,
+    color 120ms ease;
+}
+
+.ob-preview-button:hover {
+  background: color-mix(
+    in srgb,
+    var(--material-background, rgba(255, 255, 255, 0.08)) 78%,
+    white 22%
+  );
+  border-color: color-mix(
+    in srgb,
+    var(--material-border, rgba(255, 255, 255, 0.16)) 88%,
+    transparent
+  );
+  color: var(--text-color);
+}
+
+.ob-preview-button:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.ob-preview-button--ghost {
+  background: transparent;
 }
 
 .ob-preview-file {
+  flex: 1;
   min-width: 0;
-  font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
-  word-break: break-all;
-  color: var(--text-color-deemphasized);
-}
-
-.ob-preview-pathBar {
   display: flex;
-  gap: 10px;
-  align-items: flex-start;
-  padding: 10px 12px;
+  align-items: center;
+  min-height: 48px;
+  box-sizing: border-box;
+  padding: 0 14px;
+  border-radius: 14px;
   border: 1px solid
     color-mix(
       in srgb,
       var(--material-border, rgba(255, 255, 255, 0.16)) 88%,
       transparent
     );
-  border-radius: 10px;
   background: color-mix(
     in srgb,
-    var(--material-background, rgba(255, 255, 255, 0.03)) 92%,
-    white 8%
+    var(--material-background, rgba(255, 255, 255, 0.03)) 90%,
+    white 10%
   );
-}
-
-.ob-preview-pathBar__label {
-  flex: none;
-  color: var(--text-color-deemphasized);
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.ob-preview-pathBar__value {
-  min-width: 0;
   font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+  font-size: 13px;
   line-height: 1.5;
-  word-break: break-all;
+  color: var(--text-color);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
 }
 
 .ob-preview-noteFrame {
@@ -218,23 +146,22 @@ body {
     var(--material-background, rgba(255, 255, 255, 0.02)) 94%,
     white 6%
   );
+  padding: 0 8px;
+  min-width: 0;
 }
 
 .ob-preview-note {
-  max-width: 880px;
+  max-width: 720px;
+  min-width: 720px;
   margin: 0 auto;
-  padding: 26px 30px 40px;
+  padding: 18px 14px 24px;
   color: var(--text-color);
 }
 
 .ob-preview-note.markdown-body {
   font-family:
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    "PingFang SC",
-    "Microsoft YaHei UI",
-    sans-serif;
+    -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+    "Microsoft YaHei UI", sans-serif;
   line-height: 1.75;
   font-size: 15px;
 }
@@ -273,8 +200,16 @@ body {
 }
 
 .ob-preview-note.markdown-body table {
+  width: 100%;
+  table-layout: fixed;
   border-radius: 8px;
   overflow: hidden;
+}
+
+.ob-preview-note.markdown-body th,
+.ob-preview-note.markdown-body td {
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .ob-preview-note.markdown-body hr {
@@ -285,18 +220,35 @@ body {
   );
 }
 
-.ob-preview-properties {
-  display: grid;
-  grid-template-columns: minmax(120px, max-content) minmax(0, 1fr);
-  gap: 10px 18px;
-  margin: 0 0 24px;
-  padding: 0 0 20px;
-  border-bottom: 1px solid
+.ob-preview-propertiesCard {
+  margin: 0 0 18px;
+  padding: 12px 14px 14px;
+  border-radius: 12px;
+  border: 1px solid
     color-mix(
       in srgb,
       var(--material-border, rgba(255, 255, 255, 0.16)) 88%,
       transparent
     );
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.ob-preview-propertiesCard__title {
+  margin: 0 0 10px;
+  color: var(--text-color-deemphasized);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.ob-preview-properties {
+  display: grid;
+  grid-template-columns: minmax(120px, max-content) minmax(0, 1fr);
+  gap: 8px 16px;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
 }
 
 .ob-preview-property {
@@ -305,8 +257,8 @@ body {
 
 .ob-preview-property__key {
   color: var(--text-color-deemphasized);
-  font-size: 13px;
-  line-height: 1.6;
+  font-size: 12px;
+  line-height: 1.5;
   word-break: break-word;
 }
 
@@ -316,14 +268,14 @@ body {
   gap: 6px;
   align-items: center;
   min-width: 0;
-  line-height: 1.6;
+  line-height: 1.55;
   word-break: break-word;
 }
 
 .ob-preview-property__chip {
   display: inline-flex;
   align-items: center;
-  min-height: 24px;
+  min-height: 22px;
   padding: 0 8px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.05);
@@ -457,29 +409,5 @@ body {
 @media (max-width: 720px) {
   .ob-preview-shell {
     padding: 12px;
-  }
-
-  .ob-preview-header,
-  .ob-preview-noteFrame,
-  .ob-preview-pathBar {
-    border-radius: 10px;
-  }
-
-  .ob-preview-note {
-    padding: 20px 18px 28px;
-  }
-
-  .ob-preview-properties {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 4px 0;
-  }
-
-  .ob-preview-property {
-    display: block;
-    margin-bottom: 10px;
-  }
-
-  .ob-preview-property__value {
-    margin-top: 4px;
   }
 }

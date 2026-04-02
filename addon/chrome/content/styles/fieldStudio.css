@@ -4,7 +4,7 @@ body {
   padding: 0;
   height: auto;
   min-height: 100%;
-  min-width: 1120px;
+  min-width: 980px;
   min-height: 720px;
 }
 
@@ -25,6 +25,16 @@ body {
   min-height: 100%;
   padding: 8px;
   box-sizing: border-box;
+}
+
+.field-studio--frontmatter {
+  max-width: 880px;
+  margin: 0 auto;
+}
+
+.field-studio--metadata {
+  max-width: 940px;
+  margin: 0 auto;
 }
 
 .field-studio__hero,
@@ -659,18 +669,20 @@ body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 .field-studio__metaList {
   flex: none;
   min-height: 0;
-  overflow: visible;
+  overflow-x: auto;
+  overflow-y: visible;
 }
 
 .field-studio__metaHead,
 .field-studio__metaRow {
   display: grid;
-  grid-template-columns: minmax(240px, 1fr) 82px 176px;
+  grid-template-columns: minmax(0, 1fr) 82px 176px;
   gap: 8px;
   align-items: center;
   padding: 8px 10px;
@@ -728,6 +740,7 @@ body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 .field-studio__segmented {
@@ -743,6 +756,7 @@ body {
   cursor: pointer;
   font-size: 11px;
   font-weight: 700;
+  white-space: nowrap;
 }
 
 .field-studio__segment.is-active {
