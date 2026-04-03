@@ -45,6 +45,10 @@ export const OBSIDIAN_CONNECTION_TEST_FILE_NAME = "Obsidian Bridge Test.md";
 export const OBSIDIAN_ITEM_NOTE_MAP_FILE_NAME = "obsidian-bridge-map.json";
 export const OBSIDIAN_FRONTMATTER_INDEX_FILE_NAME =
   "obsidian-bridge-map-v2.json";
+export const OBSIDIAN_MANAGED_PATH_REGISTRY_FILE_NAME =
+  "obsidian-managed-path-map.json";
+export const OBSIDIAN_MANAGED_NOTE_REGISTRY_FILE_NAME =
+  "obsidian-managed-note-registry.json";
 export const OBSIDIAN_METADATA_PRESET_FILE_NAME = "obsidian-bridge-presets.json";
 export const DEFAULT_METADATA_PRESET_ID = "default";
 export const OBSIDIAN_PREFS_RENDER_RETRY_LIMIT = 12;

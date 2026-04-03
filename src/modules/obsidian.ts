@@ -13,6 +13,18 @@ export {
   initObsidianStorage,
 } from "./obsidian/settings";
 export {
+  loadRegistry,
+  rebuildRegistryIndexes,
+  getManagedNoteRegistry,
+  getManagedNoteRegistryEntry,
+  findManagedNoteRegistryEntryByItem,
+  findManagedNoteRegistryEntryByPath,
+  upsertRegistryEntry,
+  markEntryMissing,
+  markEntryTombstoned,
+  resolveRegistryEntry,
+} from "./obsidian/registry";
+export {
   applyManagedObsidianFrontmatter,
   extractManagedObsidianUserMarkdown,
   getManagedObsidianFileName,
@@ -21,8 +33,13 @@ export {
   isManagedObsidianNote,
   renderManagedObsidianNoteMarkdown,
 } from "./obsidian/managed";
+export { resolveManagedNotePath } from "./obsidian/pathResolver";
 export {
+  getManagedNotePresenceState,
   openItemsInObsidian,
   repairObsidianManagedLinks,
+  rebindManagedObsidianNotes,
+  restoreManagedObsidianNotes,
   syncSelectedItemsToObsidian,
+  unlinkManagedObsidianNotes,
 } from "./obsidian/sync";

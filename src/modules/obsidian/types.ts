@@ -3,6 +3,8 @@
 
 export type ObsidianSyncScope = "selection" | "currentList" | "library";
 export type ObsidianUpdateStrategy = "managed" | "overwrite" | "skip";
+export type ManagedPathMode = "template-managed" | "preserve-user-path";
+export type RegistryPresenceState = "active" | "missing" | "tombstoned";
 export type ManagedFrontmatterPresetId =
   | "recommended"
   | "minimal"
@@ -72,6 +74,61 @@ export interface ManagedRepairCandidate {
   noteItem: Zotero.Item;
   syncStatus: SyncStatus;
   mdStatus: MDStatus;
+}
+
+export interface ManagedPathRegistryEntry {
+  libraryID: number;
+  topItemKey: string;
+  noteKey: string;
+  resolvedPath: string;
+  scopeRoot: string;
+  pathMode: ManagedPathMode;
+  lastResolvedAt: number;
+  lastSeenAt: number;
+}
+
+export interface ManagedNoteRegistryEntry {
+  libraryID: number;
+  topItemKey: string;
+  noteKey: string;
+  currentPath: string;
+  pathMode: ManagedPathMode;
+  presenceState: RegistryPresenceState;
+  lastSeenAt: number;
+  lastFileMtime: number;
+  lastResolvedAt: number;
+  lastResolvedSource:
+    | "registry"
+    | "frontmatter-index"
+    | "scope-scan"
+    | "template-fallback"
+    | "migration"
+    | "manual";
+  conflictPaths: string[];
+  lastKnownCitekey: string;
+  scopeRoot: string;
+}
+
+export interface RegistryResolutionResult {
+  entry: ManagedNoteRegistryEntry | null;
+  matchedExistingFile: boolean;
+  path: string;
+  presenceState: RegistryPresenceState;
+}
+
+export interface ManagedPathResolution {
+  path: string;
+  scopeRoot: string;
+  pathMode: ManagedPathMode;
+  source:
+    | "registry"
+    | "sync-status"
+    | "frontmatter-index"
+    | "scope-scan"
+    | "template-fallback";
+  matchedExistingFile: boolean;
+  conflicts: string[];
+  presenceState?: RegistryPresenceState;
 }
 
 export interface ManagedFrontmatterOption {

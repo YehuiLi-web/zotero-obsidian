@@ -10,6 +10,7 @@ export {
   removeTemplate,
   initTemplates,
   importTemplateFromClipboard,
+  normalizeTemplateName,
 };
 
 function initTemplates() {
@@ -20,16 +21,25 @@ function initTemplates() {
   );
   // Convert old template keys to new format
   const raw = getPref("templateKeys") as string;
-  let keys = raw ? JSON.parse(raw) : [];
+  let keys: Array<{ name: string } | string> = raw ? JSON.parse(raw) : [];
   if (keys.length > 0) {
-    keys = keys.map((t: { name: string } | string) => {
+    const legacyKeys = keys.map((t: { name: string } | string) => {
       if (typeof t === "string") {
         return t;
       }
       return t.name;
     });
-    setTemplateKeys(Array.from(new Set(keys)));
+    setTemplateKeys(
+      Array.from(
+        new Set(
+          legacyKeys
+            .map((key) => normalizeTemplateName(key))
+            .filter(Boolean),
+        ),
+      ),
+    );
   }
+  normalizeTemplateStorage();
   // Add default templates
   const templateKeys = getTemplateKeys();
   for (const defaultTemplate of addon.api.template.DEFAULT_TEMPLATES) {
@@ -40,6 +50,7 @@ function initTemplates() {
 }
 
 function getTemplateKeys(): string[] {
+  normalizeTemplateStorage();
   return addon.data.template.data?.getKeys() || [];
 }
 
@@ -48,18 +59,39 @@ function setTemplateKeys(templateKeys: string[]): void {
 }
 
 function getTemplateText(keyName: string): string {
-  return addon.data.template.data?.getValue(keyName) || "";
+  const normalized = normalizeTemplateName(keyName);
+  if (!normalized) {
+    return "";
+  }
+  return (
+    addon.data.template.data?.getValue(normalized) ||
+    addon.data.template.data?.getValue(keyName) ||
+    ""
+  );
 }
 
 function setTemplate(template: NoteTemplate): void {
-  addon.data.template.data?.setValue(template.name, template.text);
+  const normalized = normalizeTemplateName(template.name);
+  if (!normalized) {
+    return;
+  }
+  addon.data.template.data?.setValue(normalized, template.text);
+  if (template.name !== normalized) {
+    addon.data.template.data?.deleteKey(template.name);
+  }
 }
 
 function removeTemplate(keyName: string | undefined): void {
   if (!keyName) {
     return;
   }
-  addon.data.template.data?.deleteKey(keyName);
+  const normalized = normalizeTemplateName(keyName);
+  if (normalized) {
+    addon.data.template.data?.deleteKey(normalized);
+  }
+  if (keyName !== normalized) {
+    addon.data.template.data?.deleteKey(keyName);
+  }
 }
 
 function importTemplateFromClipboard(
@@ -94,10 +126,63 @@ function importTemplateFromClipboard(
   ) {
     return;
   }
-  setTemplate({ name: template.name, text: template.content });
-  showHint(`Template ${template.name} saved.`);
+  const normalizedName = normalizeTemplateName(template.name);
+  if (!normalizedName) {
+    showHint("The copied template is invalid");
+    return;
+  }
+  setTemplate({ name: normalizedName, text: template.content });
+  showHint(`Template ${normalizedName} saved.`);
   if (addon.data.template.editor.window) {
     addon.data.template.editor.window.refresh();
   }
-  return template.name;
+  return normalizedName;
+}
+
+function normalizeTemplateName(name: string): string {
+  const normalized = String(name || "").trim();
+  if (!normalized) {
+    return "";
+  }
+  const match = normalized.match(/^\[(item|text)\]\s*(.*)$/i);
+  if (!match) {
+    return normalized;
+  }
+  const templateBody = match[2].trim();
+  if (!templateBody) {
+    return "";
+  }
+  const templateType = match[1].toLowerCase() === "item" ? "Item" : "Text";
+  return `[${templateType}]${templateBody}`;
+}
+
+function normalizeTemplateStorage() {
+  const keys = addon.data.template.data?.getKeys() || [];
+  if (!keys.length) {
+    return;
+  }
+  const normalizedKeys = Array.from(
+    new Set(keys.map((key) => normalizeTemplateName(key)).filter(Boolean)),
+  );
+  const isSame =
+    keys.length === normalizedKeys.length &&
+    keys.every((key, index) => key === normalizedKeys[index]);
+  if (isSame) {
+    return;
+  }
+
+  for (const key of keys) {
+    const normalized = normalizeTemplateName(key);
+    if (!normalized || normalized === key) {
+      continue;
+    }
+    const sourceValue = addon.data.template.data?.getValue(key);
+    const targetValue = addon.data.template.data?.getValue(normalized);
+    if (typeof sourceValue !== "undefined" && typeof targetValue === "undefined") {
+      addon.data.template.data?.setValue(normalized, sourceValue);
+    }
+    addon.data.template.data?.deleteKey(key);
+  }
+
+  setTemplateKeys(normalizedKeys);
 }

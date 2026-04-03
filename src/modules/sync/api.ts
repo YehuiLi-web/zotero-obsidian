@@ -1,8 +1,10 @@
 import YAML = require("yamljs");
+import { safeLog } from "../../utils/log";
 import { getPref, setPref } from "../../utils/prefs";
 import { config } from "../../../package.json";
 import { fileExists, formatPath, jointPath } from "../../utils/str";
 import { getManagedObsidianFileNameFresh } from "../obsidian/managed";
+import { getManagedPathRegistryEntry } from "../obsidian/managedPathRegistry";
 
 export {
   initSyncList,
@@ -128,7 +130,7 @@ function getMDStatusFromContent(contentRaw: string): MDStatus {
     try {
       ret.meta = YAML.parse(yaml);
     } catch (e) {
-      ztoolkit.log(e);
+      safeLog(e);
     }
   }
   return ret;
@@ -169,7 +171,7 @@ async function getMDStatus(
       ret.lastmodify = new Date(stat.lastModified || 0);
     }
   } catch (e) {
-    ztoolkit.log(e);
+    safeLog(e);
   }
   return ret;
 }
@@ -177,9 +179,24 @@ async function getMDStatus(
 async function getMDFileName(noteId: number, searchDir?: string) {
   const syncStatus = getSyncStatus(noteId);
   const noteItem = Zotero.Items.get(noteId);
+  const registryEntry = noteItem?.isNote()
+    ? getManagedPathRegistryEntry(noteItem)
+    : null;
+  const registryPath = formatPath(registryEntry?.resolvedPath || "");
+  const registryDir = formatPath(PathUtils.parent(registryPath) || "");
+  const registryFilename = PathUtils.filename(registryPath);
   const managedFileName =
     (await getManagedObsidianFileNameFresh(noteItem)) ||
     addon.api.obsidian.getManagedFileName(noteItem);
+  if (
+    registryPath &&
+    registryFilename &&
+    (await fileExists(registryPath)) &&
+    (!searchDir || searchDir === registryDir) &&
+    registryEntry?.pathMode === "preserve-user-path"
+  ) {
+    return registryFilename;
+  }
   if (managedFileName && searchDir && syncStatus.path === searchDir) {
     return managedFileName;
   }

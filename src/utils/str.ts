@@ -1,5 +1,6 @@
 import seedrandom = require("seedrandom");
 import pathHelper = require("path-browserify");
+import { safeLog } from "./log";
 
 export function slice(str: string, len: number) {
   return str.length > len ? `${str.slice(0, len - 3)}...` : str;
@@ -102,7 +103,7 @@ export async function fileExists(path: string): Promise<boolean> {
     // IOUtils.exists() will throw error if path is not valid
     return await IOUtils.exists(formatPath(path));
   } catch (e) {
-    ztoolkit.log("[fileExists]", e);
+    safeLog("[fileExists]", e);
     return false;
   }
 }
@@ -113,7 +114,7 @@ export function jointPath(...paths: string[]) {
       pathHelper.join(...paths.map((p) => p.replaceAll("\\", "/"))),
     );
   } catch (e) {
-    ztoolkit.log("[jointPath]", e);
+    safeLog("[jointPath]", e);
     return "";
   }
 }

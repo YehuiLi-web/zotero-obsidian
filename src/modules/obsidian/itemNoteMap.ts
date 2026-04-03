@@ -2,15 +2,21 @@
 // Manages the persistent mapping between Zotero items and their Obsidian note keys.
 
 import { clearPref, getPref } from "../../utils/prefs";
-import { fileExists } from "../../utils/str";
 import { config } from "../../../package.json";
 import {
   OBSIDIAN_ITEM_NOTE_MAP_FILE_NAME,
   OBSIDIAN_ITEM_NOTE_MAP_PREF,
 } from "./constants";
+import {
+  findManagedNoteRegistryEntryByItem,
+  getManagedNoteRegistryEntries,
+  loadRegistry,
+  removeRegistryEntry,
+  upsertRegistryEntry,
+} from "./registry";
+import type { ManagedNoteRegistryEntry } from "./types";
 
 let _obsidianItemNoteMapCache: Record<string, string> | null = null;
-let _obsidianItemNoteMapSaveTimer: ReturnType<typeof setTimeout> | null = null;
 
 function getSharedObsidianStorageState() {
   const addonData =
@@ -20,6 +26,11 @@ function getSharedObsidianStorageState() {
   }
   return addonData.obsidian as {
     itemNoteMap?: Record<string, string>;
+    managedPathRegistry?: Record<
+      string,
+      import("./types").ManagedPathRegistryEntry
+    >;
+    managedNoteRegistry?: Record<string, ManagedNoteRegistryEntry>;
     metadataPresetLibrary?: import("./types").MetadataPresetLibrary;
   };
 }
@@ -52,53 +63,24 @@ function readObsidianItemNoteMapPref() {
   }
 }
 
-async function persistObsidianItemNoteMapFile(
-  map: Record<string, string>,
-  clearLegacyPref = true,
-) {
-  getSharedObsidianStorageState().itemNoteMap = map;
-  const mapFile = getObsidianStorageFilePath(OBSIDIAN_ITEM_NOTE_MAP_FILE_NAME);
-  await writeObsidianStorageJSONFile(mapFile, map);
-  if (clearLegacyPref) {
-    clearObsidianStoragePrefs([OBSIDIAN_ITEM_NOTE_MAP_PREF]);
-  }
+function buildItemNoteMapFromRegistryEntries(entries: ManagedNoteRegistryEntry[]) {
+  return entries.reduce<Record<string, string>>((result, entry) => {
+    const itemMapKey = getItemMapKeyByParts(entry.libraryID, entry.topItemKey);
+    if (!itemMapKey || !entry.noteKey) {
+      return result;
+    }
+    result[itemMapKey] = entry.noteKey;
+    return result;
+  }, {});
 }
 
 async function initObsidianItemNoteMap() {
-  const mapFile = getObsidianStorageFilePath(OBSIDIAN_ITEM_NOTE_MAP_FILE_NAME);
-  let mapLoadedFromFile = false;
-  const legacyMap = readObsidianItemNoteMapPref();
-  const hasLegacyItemNoteMapPref = Object.keys(legacyMap).length > 0;
-  if (await fileExists(mapFile)) {
-    try {
-      const raw = await Zotero.File.getContentsAsync(mapFile);
-      _obsidianItemNoteMapCache = JSON.parse(raw as string);
-      mapLoadedFromFile = true;
-    } catch (e) {
-      ztoolkit.log(
-        `[Obsidian Bridge] failed to load ${OBSIDIAN_ITEM_NOTE_MAP_FILE_NAME}`,
-        e,
-      );
-    }
-  }
-  if (!_obsidianItemNoteMapCache) {
-    _obsidianItemNoteMapCache = legacyMap;
-  }
-  getSharedObsidianStorageState().itemNoteMap = _obsidianItemNoteMapCache || {};
-  try {
-    if (mapLoadedFromFile) {
-      clearObsidianStoragePrefs([OBSIDIAN_ITEM_NOTE_MAP_PREF]);
-    } else if (hasLegacyItemNoteMapPref) {
-      await persistObsidianItemNoteMapFile(_obsidianItemNoteMapCache!);
-    } else {
-      clearObsidianStoragePrefs([OBSIDIAN_ITEM_NOTE_MAP_PREF]);
-    }
-  } catch (e) {
-    ztoolkit.log(
-      `[Obsidian Bridge] failed to persist ${OBSIDIAN_ITEM_NOTE_MAP_FILE_NAME}`,
-      e,
-    );
-  }
+  await loadRegistry();
+  _obsidianItemNoteMapCache = buildItemNoteMapFromRegistryEntries(
+    getManagedNoteRegistryEntries(),
+  );
+  getSharedObsidianStorageState().itemNoteMap = _obsidianItemNoteMapCache;
+  clearObsidianStoragePrefs([OBSIDIAN_ITEM_NOTE_MAP_PREF]);
 }
 
 function getObsidianItemNoteMap() {
@@ -107,7 +89,12 @@ function getObsidianItemNoteMap() {
     _obsidianItemNoteMapCache = sharedMap;
   }
   if (!_obsidianItemNoteMapCache) {
-    _obsidianItemNoteMapCache = readObsidianItemNoteMapPref();
+    _obsidianItemNoteMapCache = buildItemNoteMapFromRegistryEntries(
+      getManagedNoteRegistryEntries(),
+    );
+    if (!_obsidianItemNoteMapCache || !Object.keys(_obsidianItemNoteMapCache).length) {
+      _obsidianItemNoteMapCache = readObsidianItemNoteMapPref();
+    }
   }
   return _obsidianItemNoteMapCache;
 }
@@ -115,24 +102,46 @@ function getObsidianItemNoteMap() {
 function setObsidianItemNoteMap(map: Record<string, string>) {
   _obsidianItemNoteMapCache = map;
   getSharedObsidianStorageState().itemNoteMap = map;
-  if (_obsidianItemNoteMapSaveTimer) {
-    clearTimeout(_obsidianItemNoteMapSaveTimer);
-  }
-  _obsidianItemNoteMapSaveTimer = setTimeout(async () => {
-    try {
-      _obsidianItemNoteMapSaveTimer = null;
-      await persistObsidianItemNoteMapFile(_obsidianItemNoteMapCache || {});
-    } catch (e) {
-      ztoolkit.log("[Obsidian Bridge] async map save failed", e);
+  const existingEntries = getManagedNoteRegistryEntries();
+  const existingByItemMapKey = existingEntries.reduce<Record<string, ManagedNoteRegistryEntry>>(
+    (result, entry) => {
+      const itemMapKey = getItemMapKeyByParts(entry.libraryID, entry.topItemKey);
+      if (itemMapKey) {
+        result[itemMapKey] = entry;
+      }
+      return result;
+    },
+    {},
+  );
+
+  for (const [itemMapKey, noteKey] of Object.entries(map || {})) {
+    const [libraryIDText, ...topItemKeyParts] = String(itemMapKey).split("/");
+    const libraryID = Number(libraryIDText);
+    const topItemKey = topItemKeyParts.join("/");
+    if (!libraryID || !topItemKey || !noteKey) {
+      continue;
     }
-  }, 1000);
+    const existingEntry = existingByItemMapKey[itemMapKey];
+    upsertRegistryEntry({
+      ...existingEntry,
+      libraryID,
+      topItemKey,
+      noteKey,
+    });
+  }
+
+  for (const [itemMapKey, entry] of Object.entries(existingByItemMapKey)) {
+    if (itemMapKey in (map || {})) {
+      continue;
+    }
+    removeRegistryEntry({
+      libraryID: entry.libraryID,
+      noteKey: entry.noteKey,
+    });
+  }
 }
 
 function resetObsidianItemNoteMapState() {
-  if (_obsidianItemNoteMapSaveTimer) {
-    clearTimeout(_obsidianItemNoteMapSaveTimer);
-    _obsidianItemNoteMapSaveTimer = null;
-  }
   _obsidianItemNoteMapCache = null;
   const sharedState = getSharedObsidianStorageState();
   delete sharedState.itemNoteMap;
@@ -140,6 +149,10 @@ function resetObsidianItemNoteMapState() {
 
 function getItemMapKey(item: Zotero.Item) {
   return `${item.libraryID}/${item.key}`;
+}
+
+function getItemMapKeyByParts(libraryID: number, topItemKey: string) {
+  return libraryID && topItemKey ? `${libraryID}/${topItemKey}` : "";
 }
 
 export {

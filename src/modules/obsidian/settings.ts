@@ -509,7 +509,7 @@ export function getObsidianItemTemplateOptions() {
   const templateNames = addon.api.template
     .getTemplateKeys()
     .map((templateName) => cleanInline(templateName))
-    .filter((templateName) => templateName.startsWith("[Item]"));
+    .filter((templateName) => /^\[item\]/i.test(templateName));
   return Array.from(
     new Set(
       [
@@ -523,8 +523,9 @@ export function getObsidianItemTemplateOptions() {
 
 export function getObsidianItemTemplateLabel(templateName: string) {
   const normalized = cleanInline(templateName);
-  if (normalized.toLowerCase().startsWith("[item]")) {
-    return normalized.slice(6).trim() || normalized;
+  const itemTemplateMatch = normalized.match(/^\[item\]\s*(.*)$/i);
+  if (itemTemplateMatch) {
+    return itemTemplateMatch[1].trim() || normalized;
   }
   return normalized;
 }
@@ -542,15 +543,19 @@ export function resolveObsidianItemTemplateName() {
 // ── Storage init / reset ──
 
 export async function initObsidianStorage() {
-  const { initObsidianItemNoteMap } = await import("./itemNoteMap");
+  const { loadRegistry } = await import("./registry");
   const { initMetadataPresetLibrary } = await import("./metadataPreset");
+  const { initObsidianItemNoteMap } = await import("./itemNoteMap");
+  await loadRegistry();
   await initObsidianItemNoteMap();
   await initMetadataPresetLibrary();
 }
 
 export function resetObsidianStorageState() {
   const { resetObsidianItemNoteMapState } = require("./itemNoteMap");
+  const { resetManagedNoteRegistryState } = require("./registry");
   const { resetMetadataPresetLibraryState } = require("./metadataPreset");
   resetObsidianItemNoteMapState();
+  resetManagedNoteRegistryState();
   resetMetadataPresetLibraryState();
 }

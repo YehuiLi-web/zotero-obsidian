@@ -1,5 +1,7 @@
 import { getPref } from "../../utils/prefs";
 import { formatPath, jointPath } from "../../utils/str";
+import { getManagedNoteRegistryEntry } from "../obsidian/registry";
+import { resolveManagedNotePath } from "../obsidian/pathResolver";
 
 const WATCH_SCAN_INTERVAL_MS = 2000;
 const WATCH_DEBOUNCE_MS = 1200;
@@ -63,6 +65,41 @@ function pruneWatcherState(activeNoteIds: number[]) {
   );
 }
 
+async function resolveWatchTargetPath(noteItem: Zotero.Item | false, noteId: number) {
+  const syncStatus = addon.api.sync.getSyncStatus(noteId);
+  if (noteItem && noteItem.isNote() && addon.api.obsidian.isManagedNote(noteItem)) {
+    const registryEntry = getManagedNoteRegistryEntry(noteItem);
+    if (registryEntry?.presenceState === "tombstoned") {
+      return "";
+    }
+    const registryPath = formatPath(registryEntry?.currentPath || "");
+    if (registryPath) {
+      try {
+        await IOUtils.stat(registryPath);
+        return registryPath;
+      } catch (error) {
+        // Fall through to re-resolution.
+      }
+    }
+    const resolution = await resolveManagedNotePath(noteItem, {
+      includeTemplateFallback: false,
+      refreshSyncStatus: true,
+    });
+    if (
+      !resolution.matchedExistingFile ||
+      resolution.presenceState === "tombstoned"
+    ) {
+      return "";
+    }
+    return formatPath(resolution.path);
+  }
+
+  if (!syncStatus.path || !syncStatus.filename) {
+    return "";
+  }
+  return formatPath(jointPath(syncStatus.path, syncStatus.filename));
+}
+
 async function scanWatchedFiles() {
   if (!addon.data.alive) {
     stopSyncFileWatcher();
@@ -73,15 +110,17 @@ async function scanWatchedFiles() {
   }
 
   const noteIds = await addon.api.sync.getSyncNoteIds();
-  pruneWatcherState(noteIds);
   const now = Date.now();
+  const activeNoteIds: number[] = [];
 
   for (const noteId of noteIds) {
+    const noteItem = Zotero.Items.get(noteId);
     const syncStatus = addon.api.sync.getSyncStatus(noteId);
-    if (!syncStatus.path || !syncStatus.filename) {
+    const filePath = await resolveWatchTargetPath(noteItem, noteId);
+    if (!filePath) {
       continue;
     }
-    const filePath = formatPath(jointPath(syncStatus.path, syncStatus.filename));
+    activeNoteIds.push(noteId);
     try {
       const stat = await IOUtils.stat(filePath);
       const currentModified = Number(stat.lastModified || 0);
@@ -104,6 +143,8 @@ async function scanWatchedFiles() {
       continue;
     }
   }
+
+  pruneWatcherState(activeNoteIds);
 
   const pendingNoteIds = Object.entries(addon.data.sync.watcher.pendingChanges)
     .filter(([noteIdText, queuedAt]) => {

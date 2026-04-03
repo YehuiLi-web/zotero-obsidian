@@ -20,6 +20,7 @@ import {
 import { setPref } from "../../src/utils/prefs";
 import { waitUtilAsync } from "../../src/utils/wait";
 import { setObsidianItemNoteMap } from "../../src/modules/obsidian/settings";
+import { getManagedPathRegistryEntry } from "../../src/modules/obsidian/managedPathRegistry";
 
 describe("Export", function () {
   const addon = getAddon();
@@ -199,6 +200,79 @@ describe("Export", function () {
     await Zotero.Items.erase(topItem.id);
   });
 
+  it("managed notes still export while the Zotero note editor is active", async function () {
+    const { topItem, note } = await createManagedObsidianNote();
+    const tempDir = await getTempDirectory();
+
+    await addon.api.$export.syncMDBatch(tempDir, [note.id]);
+
+    const filePath = PathUtils.join(
+      tempDir,
+      addon.api.sync.getSyncStatus(note.id).filename,
+    );
+
+    const updatedNoteHTML = `<div data-schema-version="${config.dataSchemaVersion}"><h2>Notes</h2><p>Active editor Zotero update</p></div>`;
+    note.setNote(updatedNoteHTML);
+    await note.saveTx({
+      notifierData: {
+        skipOB: true,
+      },
+    });
+    await waitUtilAsync(
+      () =>
+        (Zotero.Items.get(note.id) as Zotero.Item)
+          ?.getNote()
+          ?.includes("Active editor Zotero update"),
+      25,
+      3000,
+    );
+
+    const originalEditorInstances = Zotero.Notes._editorInstances;
+    const visibleEditorElement: any = {
+      getBoundingClientRect: () => ({
+        left: 0,
+        top: 0,
+        width: 12,
+        height: 12,
+      }),
+      contains(candidate: unknown) {
+        return candidate === visibleEditorElement;
+      },
+    };
+    visibleEditorElement.ownerDocument = {
+      elementFromPoint: () => visibleEditorElement,
+    };
+
+    (Zotero.Notes as any)._editorInstances = [
+      {
+        _item: {
+          id: note.id,
+        },
+        _popup: {
+          closest: () => visibleEditorElement,
+        },
+      },
+    ];
+
+    try {
+      const refreshedNote = Zotero.Items.get(note.id) as Zotero.Item;
+      await addon.hooks.onSyncing([refreshedNote], {
+        quiet: true,
+        skipActive: true,
+        reason: "active-note-export",
+      });
+    } finally {
+      (Zotero.Notes as any)._editorInstances = originalEditorInstances;
+    }
+
+    const content = (await Zotero.File.getContentsAsync(filePath, "utf-8")) as string;
+
+    assert.include(content, "Active editor Zotero update");
+
+    await Zotero.Items.erase(note.id);
+    await Zotero.Items.erase(topItem.id);
+  });
+
   it("api.$export.saveMD includes managed PDF annotations", async function () {
     const { topItem, note } = await createManagedObsidianNote();
     const mockedAnnotations = mockManagedPDFAnnotations(topItem, [
@@ -247,6 +321,9 @@ describe("Export", function () {
     const syncDir = await getTempDirectory();
 
     await addon.api.$export.syncMDBatch(syncDir, [note.id]);
+    debug(
+      `managed-resync registry initial ${JSON.stringify(getManagedPathRegistryEntry(note))}`,
+    );
 
     const initialSyncStatus = addon.api.sync.getSyncStatus(note.id);
     assert.isTrue(addon.api.sync.isSyncNote(note.id));
@@ -261,8 +338,23 @@ describe("Export", function () {
         skipOB: true,
       },
     });
+    debug(
+      `managed-resync resolver before notify ${JSON.stringify(
+        await addon.api.obsidian.resolveManagedPath(note, {
+          notesDir: syncDir,
+          vaultRoot: "",
+          includeTemplateFallback: true,
+        }),
+      )}`,
+    );
 
     await addon.hooks.onNotify("modify", "item", [topItem.id], {});
+    debug(
+      `managed-resync registry after notify ${JSON.stringify(getManagedPathRegistryEntry(note))}`,
+    );
+    debug(
+      `managed-resync expected managed filename ${addon.api.obsidian.getManagedFileName(note)}`,
+    );
     await waitUtilAsync(
       () =>
         addon.api.sync.getSyncStatus(note.id).managedSourceHash !==
@@ -284,6 +376,115 @@ describe("Export", function () {
     assert.include(updatedContent, 'title: "Managed Sync Article Updated"');
     assert.isTrue(await IOUtils.exists(updatedFilePath));
     assert.isFalse(await IOUtils.exists(initialFilePath));
+
+    await Zotero.Items.erase(note.id);
+    await Zotero.Items.erase(topItem.id);
+  });
+
+  it("managed notes reopen and resync against manually renamed Obsidian files", async function () {
+    const { topItem, note } = await createManagedObsidianNote();
+    const tempDir = await getTempDirectory();
+    const vaultRoot = PathUtils.join(tempDir, "vault-renamed");
+    const notesDir = PathUtils.join(vaultRoot, "notes");
+    const dashboardDir = PathUtils.join(vaultRoot, "dashboards", "zotero");
+
+    await Zotero.File.createDirectoryIfMissingAsync(vaultRoot);
+    configureObsidianDashboardPrefs(vaultRoot, notesDir, dashboardDir);
+    setPref("obsidian.syncScope", "selection");
+    setPref("obsidian.openAfterSync", false);
+    setPref("obsidian.revealAfterSync", false);
+
+    await Zotero.getMainWindow().ZoteroPane.selectItem(topItem.id);
+    await addon.api.obsidian.syncSelectedItems();
+
+    const initialSyncStatus = addon.api.sync.getSyncStatus(note.id);
+    const initialFilePath = PathUtils.join(notesDir, initialSyncStatus.filename);
+    const renamedFilename = "managed-note-renamed-in-obsidian.md";
+    const renamedFilePath = PathUtils.join(notesDir, renamedFilename);
+
+    debug(
+      `manual-rename initialSyncStatus ${JSON.stringify(initialSyncStatus)}`,
+    );
+    debug(`manual-rename initialFilePath ${initialFilePath}`);
+
+    await IOUtils.move(initialFilePath, renamedFilePath);
+    debug(`manual-rename renamedFilePath ${renamedFilePath}`);
+
+    let openedURI = "";
+    const originalLaunchURL = (Zotero as any).launchURL;
+    (Zotero as any).launchURL = (uri: string) => {
+      openedURI = uri;
+    };
+
+    try {
+      await addon.hooks.onOpenItemsInObsidian([topItem]);
+    } finally {
+      (Zotero as any).launchURL = originalLaunchURL;
+    }
+
+    debug(`manual-rename openedURI ${openedURI}`);
+    debug(
+      `manual-rename syncStatus after open ${JSON.stringify(addon.api.sync.getSyncStatus(note.id))}`,
+    );
+
+    if (!decodeURIComponent(openedURI).includes(renamedFilename)) {
+      throw new Error(`openItemsInObsidian targeted unexpected URI: ${openedURI}`);
+    }
+    if (addon.api.sync.getSyncStatus(note.id).filename !== renamedFilename) {
+      throw new Error(
+        `syncStatus was not repaired after open: ${addon.api.sync.getSyncStatus(note.id).filename}`,
+      );
+    }
+
+    topItem.setField("title", "Managed Sync Article After Manual Rename");
+    await topItem.saveTx({
+      notifierData: {
+        skipOB: true,
+      },
+    });
+
+    await Zotero.getMainWindow().ZoteroPane.selectItem(topItem.id);
+    await addon.api.obsidian.syncSelectedItems();
+
+    const updatedSyncStatus = addon.api.sync.getSyncStatus(note.id);
+    const expectedManagedPath = PathUtils.join(
+      notesDir,
+      addon.api.obsidian.getManagedFileName(note),
+    );
+    const renamedContent = (await Zotero.File.getContentsAsync(
+      renamedFilePath,
+      "utf-8",
+    )) as string;
+
+    debug(
+      `manual-rename updatedSyncStatus ${JSON.stringify(updatedSyncStatus)}`,
+    );
+    debug(`manual-rename expectedManagedPath ${expectedManagedPath}`);
+    debug(
+      `manual-rename renamed file exists ${String(await IOUtils.exists(renamedFilePath))}`,
+    );
+    debug(
+      `manual-rename expected managed exists ${String(await IOUtils.exists(expectedManagedPath))}`,
+    );
+
+    if (updatedSyncStatus.filename !== renamedFilename) {
+      throw new Error(
+        `resync wrote to ${updatedSyncStatus.filename} instead of ${renamedFilename}`,
+      );
+    }
+    if (!(await IOUtils.exists(renamedFilePath))) {
+      throw new Error("renamed file disappeared after resync");
+    }
+    if (await IOUtils.exists(expectedManagedPath)) {
+      throw new Error(`resync created an unexpected duplicate file: ${expectedManagedPath}`);
+    }
+    if (!renamedContent.includes("# Managed Sync Article After Manual Rename")) {
+      throw new Error("renamed file was not updated in place during resync");
+    }
+    assert.include(
+      renamedContent,
+      'title: "Managed Sync Article After Manual Rename"',
+    );
 
     await Zotero.Items.erase(note.id);
     await Zotero.Items.erase(topItem.id);

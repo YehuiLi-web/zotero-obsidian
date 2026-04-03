@@ -3,6 +3,7 @@ import { config } from "../../../package.json";
 import { rememberWatchedFileState } from "../sync/watcher";
 import { normalizeFrontmatterObject } from "../obsidian/frontmatter";
 import { refreshFrontmatterIndexEntry } from "../obsidian/frontmatterIndex";
+import { rememberManagedResolvedPath } from "../obsidian/pathResolver";
 import {
   GENERATED_BLOCK_START,
   USER_BLOCK_START,
@@ -225,6 +226,11 @@ export async function fromMD(
       mdStatus.meta,
       mdStatus.lastmodify?.getTime?.() || Date.now(),
     );
+    if (isManagedNote) {
+      await rememberManagedResolvedPath(noteItem, filepath, {
+        refreshSyncStatus: true,
+      });
+    }
     if (options.recordHistory !== false && !skippedManagedBodyImport) {
       addon.api.sync.recordNoteHistory(noteItem, filepath, {
         beforeText: beforeNoteText,

@@ -4,6 +4,10 @@ import { fileExists, formatPath, jointPath } from "../../utils/str";
 import { rememberWatchedFileState } from "../sync/watcher";
 import { normalizeFrontmatterObject } from "../obsidian/frontmatter";
 import {
+  rememberManagedResolvedPath,
+  resolveManagedSyncTargetPath,
+} from "../obsidian/pathResolver";
+import {
   GENERATED_BLOCK_START,
   USER_BLOCK_START,
 } from "../obsidian/markdown";
@@ -159,6 +163,11 @@ export async function saveMD(
     fileLastModified: Number(fileStat.lastModified || Date.now()),
     lastsync: new Date().getTime(),
   });
+  if (useManagedExport) {
+    await rememberManagedResolvedPath(noteItem, filename, {
+      refreshSyncStatus: true,
+    });
+  }
   rememberWatchedFileState(noteItem.id, Number(fileStat.lastModified || Date.now()));
   if (options.recordHistory !== false) {
     addon.api.sync.recordMarkdownHistory(noteItem, filename, {
@@ -204,6 +213,8 @@ export async function syncMDBatch(
     jointPath(normalizedSaveDir, getPref("syncAttachmentFolder") as string);
   const attachmentFolder =
     options.attachmentFolder || (getPref("syncAttachmentFolder") as string);
+  const configuredNotesDir = String(getPref("obsidian.notesDir") || "").trim();
+  const configuredVaultRoot = String(getPref("obsidian.vaultRoot") || "").trim();
   const hasImage = noteItems.some((noteItem) =>
     noteItem.getNote().includes("<img"),
   );
@@ -218,12 +229,37 @@ export async function syncMDBatch(
     let filePath: string;
     let filename: string;
     let targetDir = normalizedSaveDir;
+    const isManagedNote = addon.api.obsidian.isManagedNote(noteItem);
+    let managedResolverSettings:
+      | {
+          notesDir: string;
+          vaultRoot: string;
+        }
+      | undefined;
+    let managedResolution:
+      | Awaited<ReturnType<typeof resolveManagedSyncTargetPath>>
+      | undefined;
     if (explicitTargetPath) {
       filePath = explicitTargetPath;
       filename = PathUtils.filename(filePath);
       const explicitDir = formatPath(PathUtils.parent(filePath) || "");
       targetDir = explicitDir || normalizedSaveDir;
       await ensureDir(targetDir);
+    } else if (isManagedNote) {
+      managedResolverSettings = {
+        notesDir: normalizedSaveDir || configuredNotesDir,
+        vaultRoot: configuredVaultRoot,
+      };
+      managedResolution = await resolveManagedSyncTargetPath(
+        noteItem,
+        managedResolverSettings,
+      );
+      filePath = formatPath(managedResolution.path || "");
+      filename = PathUtils.filename(filePath);
+      targetDir = formatPath(PathUtils.parent(filePath) || normalizedSaveDir);
+      if (targetDir) {
+        await ensureDir(targetDir);
+      }
     } else {
       let derivedName = await addon.api.sync.getMDFileName(
         noteItem.id,
@@ -243,10 +279,9 @@ export async function syncMDBatch(
       i += 1;
       continue;
     }
-    const useManagedExport = await shouldUseManagedObsidianExport(
-      noteItem,
-      filePath,
-    );
+    const useManagedExport =
+      isManagedNote ||
+      (await shouldUseManagedObsidianExport(noteItem, filePath));
     if (
       useManagedExport &&
       updateStrategy === "skip" &&
@@ -301,6 +336,13 @@ export async function syncMDBatch(
       fileLastModified: Number(fileStat.lastModified || Date.now()),
       lastsync: new Date().getTime(),
     });
+    if (useManagedExport) {
+      await rememberManagedResolvedPath(noteItem, filePath, {
+        settings: managedResolverSettings,
+        pathMode: managedResolution?.pathMode,
+        refreshSyncStatus: true,
+      });
+    }
     rememberWatchedFileState(noteItem.id, Number(fileStat.lastModified || Date.now()));
     if (options.recordHistory !== false) {
       addon.api.sync.recordMarkdownHistory(noteItem, filePath, {

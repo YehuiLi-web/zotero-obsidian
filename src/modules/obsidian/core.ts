@@ -5,9 +5,28 @@ export * from "./childNotes";
 export {
   ensureFrontmatterIndex,
   rebuildFrontmatterIndex,
+  findFrontmatterCandidates,
   refreshFrontmatterIndexEntry,
   resolveNoteByFrontmatter,
 } from "./frontmatterIndex";
+export {
+  getManagedScopeRoot,
+  rememberManagedResolvedPath,
+  resolveManagedNotePath,
+  resolveManagedSyncTargetPath,
+} from "./pathResolver";
+export {
+  loadRegistry,
+  rebuildRegistryIndexes,
+  getManagedNoteRegistry,
+  getManagedNoteRegistryEntry,
+  findManagedNoteRegistryEntryByItem,
+  findManagedNoteRegistryEntryByPath,
+  upsertRegistryEntry,
+  markEntryMissing,
+  markEntryTombstoned,
+  resolveRegistryEntry,
+} from "./registry";
 export {
   getDefaultDashboardDir,
   splitComparablePath,

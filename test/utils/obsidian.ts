@@ -1,6 +1,7 @@
 import { config } from "../../package.json";
 import { setPref } from "../../src/utils/prefs";
 import { setObsidianItemNoteMap } from "../../src/modules/obsidian/settings";
+import { resetManagedPathRegistryState } from "../../src/modules/obsidian/managedPathRegistry";
 
 const GENERATED_BLOCK_START = `<!-- ${config.addonRef}:BEGIN GENERATED -->`;
 const GENERATED_BLOCK_END = `<!-- ${config.addonRef}:END GENERATED -->`;
@@ -51,6 +52,7 @@ export async function createManagedObsidianNote() {
 
 export function resetManagedObsidianPrefs() {
   setObsidianItemNoteMap({});
+  resetManagedPathRegistryState();
   setPref("obsidian.dashboardDir", "");
   setPref("obsidian.dashboardAutoSetup", true);
   setPref("obsidian.vaultRoot", "");

@@ -38,6 +38,44 @@ describe("Template", function () {
     assert.isFalse(addon.api.template.getTemplateKeys().includes(key!));
   });
 
+  it("api.template normalizes [item]/[text] template names", async function () {
+    addon.api.template.setTemplate({
+      name: "  [item]  Normalized Template  ",
+      text: "<p>normalized</p>",
+    });
+    assert.isTrue(
+      addon.api.template.getTemplateKeys().includes("[Item]Normalized Template"),
+    );
+    assert.equal(
+      addon.api.template.getTemplateText("[item]Normalized Template"),
+      "<p>normalized</p>",
+    );
+    addon.api.template.removeTemplate("[item]Normalized Template");
+    assert.isFalse(
+      addon.api.template.getTemplateKeys().includes("[Item]Normalized Template"),
+    );
+  });
+
+  it("api.template keeps only one canonical key for case-variant prefixes", async function () {
+    addon.api.template.setTemplate({
+      name: "[item]Collision Template",
+      text: "<p>first</p>",
+    });
+    addon.api.template.setTemplate({
+      name: "[Item]Collision Template",
+      text: "<p>second</p>",
+    });
+    const collisionTemplates = addon.api.template
+      .getTemplateKeys()
+      .filter((key: string) => key === "[Item]Collision Template");
+    assert.equal(collisionTemplates.length, 1);
+    assert.equal(
+      addon.api.template.getTemplateText("[Item]Collision Template"),
+      "<p>second</p>",
+    );
+    addon.api.template.removeTemplate("[Item]Collision Template");
+  });
+
   it("api.template.renderTemplatePreview", async function () {
     const key = importTemplate();
     const preview = await addon.api.template.renderTemplatePreview(key!);

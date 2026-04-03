@@ -94,17 +94,6 @@ const DEFAULT_TEMPLATES = <NoteTemplate[]>[
 
 ### 主要结论
 
-- 
-
-## Notes
-
-
-## Questions
-
-- 
-
-## Related
-
 - `,
   },
   {

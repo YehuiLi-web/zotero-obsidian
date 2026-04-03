@@ -3,6 +3,7 @@ import { getString } from "../../utils/locale";
 import { getPref } from "../../utils/prefs";
 import { jointPath } from "../../utils/str";
 import { isElementVisible } from "../../utils/window";
+import { resolveManagedNotePath } from "../obsidian/pathResolver";
 
 export { setSyncing, callSyncing };
 
@@ -55,6 +56,7 @@ async function callSyncing(
   try {
     addon.data.sync.lock = true;
     let skippedCount = 0;
+    const activeNoteIds = new Set<number>();
     if (!items || !items.length) {
       items = Zotero.Items.get(await addon.api.sync.getSyncNoteIds());
     } else {
@@ -65,20 +67,18 @@ async function callSyncing(
       return;
     }
     if (skipActive) {
-      // Skip active note editors' targets
-      const activeNoteIds = Zotero.Notes._editorInstances
+      // Active note editors should not receive markdown imports/diff prompts,
+      // but Zotero-side edits still need to export to Obsidian.
+      const visibleActiveNoteIds = Zotero.Notes._editorInstances
         .filter((editor) => {
           const elem = (editor._popup as XULPopupElement).closest(
             "note-editor",
           );
           return elem && isElementVisible(elem);
         })
-        .map((editor) => editor._item.id);
-      const filteredItems = items.filter(
-        (item) => !activeNoteIds.includes(item.id),
-      );
-      skippedCount = items.length - filteredItems.length;
-      items = filteredItems;
+        .map((editor) => editor._item.id)
+        .filter((noteId) => Number.isFinite(noteId) && noteId > 0);
+      visibleActiveNoteIds.forEach((noteId) => activeNoteIds.add(noteId));
     }
     ztoolkit.log("sync start", reason, items.length, skippedCount);
 
@@ -104,12 +104,30 @@ async function callSyncing(
     const mdStatusMap = {} as Record<number, MDStatus>;
     let i = 1;
     for (const item of items) {
+      if (addon.api.obsidian.isManagedNote(item)) {
+        const resolution = await resolveManagedNotePath(item, {
+          includeTemplateFallback: false,
+          refreshSyncStatus: false,
+        });
+        if (resolution.presenceState === "tombstoned") {
+          skippedCount += 1;
+          progress?.changeLine({
+            text: `[${getString("sync-running-hint-check")}] ${i}/${
+              items.length
+            } ...`,
+            progress: ((i - 1) / items.length) * 100,
+          });
+          i += 1;
+          continue;
+        }
+      }
       const syncStatus = addon.api.sync.getSyncStatus(item.id);
       const filepath = syncStatus.path;
       const mdStatus = await addon.api.sync.getMDStatus(item.id);
       mdStatusMap[item.id] = mdStatus;
 
       const compareResult = await doCompare(item, mdStatus);
+      const shouldSkipActiveImport = skipActive && activeNoteIds.has(item.id);
       switch (compareResult) {
         case SyncCode.NoteAhead:
           if (Object.keys(toExport).includes(filepath)) {
@@ -119,10 +137,18 @@ async function callSyncing(
           }
           break;
         case SyncCode.MDAhead:
-          toImport.push(syncStatus);
+          if (shouldSkipActiveImport) {
+            skippedCount += 1;
+          } else {
+            toImport.push(syncStatus);
+          }
           break;
         case SyncCode.NeedDiff:
-          toDiff.push(syncStatus);
+          if (shouldSkipActiveImport) {
+            skippedCount += 1;
+          } else {
+            toDiff.push(syncStatus);
+          }
           break;
         default:
           break;

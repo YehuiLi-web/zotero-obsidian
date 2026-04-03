@@ -6,6 +6,7 @@ import { getString } from "../../utils/locale";
 import { waitUtilAsync } from "../../utils/wait";
 import { xhtmlEscape } from "../../utils/str";
 import { initializeTemplateEditor } from "./monacoEditor";
+import { normalizeTemplateName } from "./controller";
 
 export async function showTemplateEditor() {
   if (
@@ -596,12 +597,18 @@ function saveSelectedTemplate() {
   const name = getSelectedTemplateName();
   const type = templateType.value;
   let modifiedName: string;
+  const rawDisplayName = templateName.value.trim();
   if (type === "system") {
     modifiedName = name;
   } else if (type === "unknown") {
-    modifiedName = templateName.value;
+    modifiedName = rawDisplayName;
   } else {
-    modifiedName = `[${type}]${templateName.value}`;
+    modifiedName = `[${type}]${rawDisplayName}`;
+  }
+  modifiedName = normalizeTemplateName(modifiedName);
+  if (!modifiedName) {
+    showHint("Template name cannot be empty.");
+    return;
   }
 
   if (
@@ -612,6 +619,19 @@ function saveSelectedTemplate() {
       `Template ${name} is a system template. Modifying template name is not allowed.`,
     );
     return;
+  }
+  const existingTemplateNames = addon.api.template.getTemplateKeys();
+  if (modifiedName !== name && existingTemplateNames.includes(modifiedName)) {
+    if (addon.api.template.SYSTEM_TEMPLATE_NAMES.includes(modifiedName)) {
+      showHint(`Template ${modifiedName} is a system template and cannot be overwritten.`);
+      return;
+    }
+    const overwrite = win.confirm(
+      `Template ${modifiedName} already exists. Overwrite it?`,
+    );
+    if (!overwrite) {
+      return;
+    }
   }
 
   const template = {
@@ -638,11 +658,16 @@ function saveSelectedTemplate() {
     addon.api.template.removeTemplate(name);
   }
   showHint(`Template ${modifiedName} saved.`);
-  const selectedId =
+  const selectedIdBeforeRefresh =
     addon.data.template.editor.tableHelper?.treeInstance.selection.selected
       .values()
       .next().value;
-  refresh(true).then(() => updateTable(selectedId));
+  refresh(true).then(() => {
+    const nextSelectedId = addon.data.template.editor.templates.findIndex(
+      (templateKey) => templateKey === modifiedName,
+    );
+    updateTable(nextSelectedId >= 0 ? nextSelectedId : selectedIdBeforeRefresh);
+  });
 }
 
 function deleteSelectedTemplate() {

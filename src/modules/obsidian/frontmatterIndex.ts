@@ -1,7 +1,16 @@
 import { fileExists, formatPath } from "../../utils/str";
+import { safeLog } from "../../utils/log";
+import { readManagedFrontmatterIdentity } from "./frontmatterScanner";
 import { normalizeFrontmatterObject } from "./frontmatter";
 import { cleanInline, firstValue } from "./shared";
 import { OBSIDIAN_FRONTMATTER_INDEX_FILE_NAME } from "./constants";
+import {
+  findManagedNoteRegistryEntriesByCitekey,
+  findManagedNoteRegistryEntryByItem,
+  getManagedNoteRegistryEntry,
+  markEntryMissing,
+  upsertRegistryEntry,
+} from "./registry";
 import {
   getObsidianStorageFilePath,
   writeObsidianStorageJSONFile,
@@ -130,7 +139,7 @@ function scheduleFrontmatterIndexSave() {
         getSerializedIndex(),
       );
     } catch (error) {
-      ztoolkit.log("[ObsidianBridge] failed to persist frontmatter index", error);
+      safeLog("[ObsidianBridge] failed to persist frontmatter index", error);
     }
   }, 1000);
 }
@@ -171,7 +180,7 @@ async function loadFrontmatterIndexFile() {
         frontmatterIndex = {};
       }
     } catch (error) {
-      ztoolkit.log(
+      safeLog(
         "[ObsidianBridge] failed to load frontmatter index from disk",
         error,
       );
@@ -260,6 +269,32 @@ function setFrontmatterIndexEntry(entry: FrontmatterIndexEntry | null) {
   }
   frontmatterIndex[normalizedPath] = { ...entry, path: normalizedPath };
   addEntryToLookups(frontmatterIndex[normalizedPath]);
+  if (entry.libraryID && entry.noteKey) {
+    const candidateNote = Zotero.Items.getByLibraryAndKey(
+      entry.libraryID,
+      entry.noteKey,
+    ) as Zotero.Item | false;
+    if (!candidateNote || !candidateNote.isNote()) {
+      scheduleFrontmatterIndexSave();
+      return;
+    }
+    const existingRegistryEntry = getManagedNoteRegistryEntry({
+      libraryID: entry.libraryID,
+      noteKey: entry.noteKey,
+    });
+    upsertRegistryEntry({
+      ...existingRegistryEntry,
+      libraryID: entry.libraryID,
+      topItemKey: entry.zoteroKey || existingRegistryEntry?.topItemKey || "",
+      noteKey: entry.noteKey,
+      currentPath: normalizedPath,
+      lastKnownCitekey: entry.citekey || existingRegistryEntry?.lastKnownCitekey || "",
+      lastFileMtime: Number(entry.mtime || 0),
+      lastSeenAt: Date.now(),
+      presenceState: "active",
+      lastResolvedSource: "frontmatter-index",
+    });
+  }
   scheduleFrontmatterIndexSave();
 }
 
@@ -269,7 +304,14 @@ function deleteFrontmatterIndexEntry(path: string) {
     return;
   }
   removeEntryFromLookups(normalizedPath);
+  const removedEntry = frontmatterIndex[normalizedPath];
   delete frontmatterIndex[normalizedPath];
+  if (removedEntry?.libraryID && removedEntry.noteKey) {
+    markEntryMissing({
+      libraryID: removedEntry.libraryID,
+      noteKey: removedEntry.noteKey,
+    });
+  }
   scheduleFrontmatterIndexSave();
 }
 
@@ -307,15 +349,15 @@ async function rebuildFrontmatterIndex(notesDir: string) {
 
 async function extractEntryFromFile(filePath: string) {
   try {
-    const mdStatus = await addon.api.sync.getMDStatus(filePath);
-    if (!mdStatus?.meta) {
+    const scanned = await readManagedFrontmatterIdentity(filePath);
+    if (!scanned?.meta) {
       deleteFrontmatterIndexEntry(filePath);
       return null;
     }
     const record = buildIndexEntryFromMeta(
-      mdStatus.meta,
+      scanned.meta,
       filePath,
-      mdStatus.lastmodify?.getTime?.() || Date.now(),
+      scanned.mtime || Date.now(),
     );
     if (record) {
       return record;
@@ -323,7 +365,7 @@ async function extractEntryFromFile(filePath: string) {
     deleteFrontmatterIndexEntry(filePath);
     return null;
   } catch (error) {
-    ztoolkit.log(
+    safeLog(
       "[ObsidianBridge] failed to read frontmatter while indexing",
       filePath,
       error,
@@ -352,48 +394,156 @@ async function refreshFrontmatterIndexEntry(
   }
 }
 
-async function resolveNoteByFrontmatter(
-  options: ResolveFrontmatterOptions,
-): Promise<FrontmatterResolution | null> {
-  await ensureFrontmatterIndex(options.notesDir);
+function collectFrontmatterCandidates(options: ResolveFrontmatterOptions) {
   const candidates: FrontmatterIndexEntry[] = [];
+  const seenPaths = new Set<string>();
+  const addCandidates = (entries: FrontmatterIndexEntry[]) => {
+    for (const entry of entries.filter(Boolean)) {
+      const normalizedPath = formatPath(entry.path);
+      if (!normalizedPath || seenPaths.has(normalizedPath)) {
+        continue;
+      }
+      seenPaths.add(normalizedPath);
+      candidates.push(entry);
+    }
+  };
+
+  if (options.noteKey && options.libraryID) {
+    const registryEntry = getManagedNoteRegistryEntry({
+      libraryID: options.libraryID,
+      noteKey: options.noteKey,
+    });
+    if (registryEntry?.currentPath) {
+      addCandidates([
+        {
+          path: registryEntry.currentPath,
+          citekey: registryEntry.lastKnownCitekey || options.citekey || "",
+          zoteroKey: registryEntry.topItemKey || options.zoteroKey || "",
+          noteKey: registryEntry.noteKey,
+          libraryID: registryEntry.libraryID,
+          mtime: registryEntry.lastFileMtime || registryEntry.lastSeenAt || Date.now(),
+        },
+      ]);
+    }
+  }
+
+  if (options.libraryID && options.zoteroKey) {
+    const registryEntry = findManagedNoteRegistryEntryByItem({
+      libraryID: options.libraryID,
+      topItemKey: options.zoteroKey,
+    });
+    if (registryEntry?.currentPath) {
+      addCandidates([
+        {
+          path: registryEntry.currentPath,
+          citekey: registryEntry.lastKnownCitekey || options.citekey || "",
+          zoteroKey: registryEntry.topItemKey,
+          noteKey: registryEntry.noteKey,
+          libraryID: registryEntry.libraryID,
+          mtime: registryEntry.lastFileMtime || registryEntry.lastSeenAt || Date.now(),
+        },
+      ]);
+    }
+  }
 
   if (options.citekey) {
-    candidates.push(
-      ...getLookupEntries(citekeyLookup, options.citekey).filter(Boolean),
+    addCandidates(
+      findManagedNoteRegistryEntriesByCitekey(options.citekey).map((entry) => ({
+        path: entry.currentPath,
+        citekey: entry.lastKnownCitekey || options.citekey || "",
+        zoteroKey: entry.topItemKey,
+        noteKey: entry.noteKey,
+        libraryID: entry.libraryID,
+        mtime: entry.lastFileMtime || entry.lastSeenAt || Date.now(),
+      })),
+    );
+  }
+
+  if (options.noteKey) {
+    addCandidates(
+      getLookupEntries(noteLookup, options.noteKey).filter(Boolean),
     );
   }
 
   if (
-    !candidates.length &&
     options.libraryID &&
     options.zoteroKey
   ) {
     const itemKey = getItemKey(options.libraryID, options.zoteroKey);
     if (itemKey) {
-      candidates.push(...getLookupEntries(itemLookup, itemKey));
+      addCandidates(getLookupEntries(itemLookup, itemKey));
     }
   }
 
-  if (!candidates.length && options.noteKey) {
-    candidates.push(
-      ...getLookupEntries(noteLookup, options.noteKey).filter(Boolean),
+  if (options.citekey) {
+    addCandidates(
+      getLookupEntries(citekeyLookup, options.citekey).filter(Boolean),
     );
   }
 
-  for (const entry of candidates) {
+  return candidates;
+}
+
+async function getFrontmatterCandidatesFromCurrentIndex(
+  options: ResolveFrontmatterOptions,
+): Promise<{
+  candidates: FrontmatterIndexEntry[];
+  hadMissingCandidates: boolean;
+}> {
+  const resolvedCandidates: FrontmatterIndexEntry[] = [];
+  let hadMissingCandidates = false;
+  for (const entry of collectFrontmatterCandidates(options)) {
     if (await fileExists(entry.path)) {
-      return { path: entry.path, entry };
+      resolvedCandidates.push(entry);
+      continue;
     }
+    hadMissingCandidates = true;
     deleteFrontmatterIndexEntry(entry.path);
   }
 
+  return {
+    candidates: resolvedCandidates,
+    hadMissingCandidates,
+  };
+}
+
+async function findFrontmatterCandidates(
+  options: ResolveFrontmatterOptions,
+): Promise<FrontmatterIndexEntry[]> {
+  await ensureFrontmatterIndex(options.notesDir);
+  let result = await getFrontmatterCandidatesFromCurrentIndex(options);
+  if (result.candidates.length) {
+    return result.candidates;
+  }
+
+  if (result.hadMissingCandidates && options.notesDir) {
+    await rebuildFrontmatterIndex(options.notesDir);
+    result = await getFrontmatterCandidatesFromCurrentIndex(options);
+    if (result.candidates.length) {
+      return result.candidates;
+    }
+  }
+
+  return [];
+}
+
+async function resolveNoteByFrontmatter(
+  options: ResolveFrontmatterOptions,
+): Promise<FrontmatterResolution | null> {
+  const candidates = await findFrontmatterCandidates(options);
+  if (candidates[0]) {
+    return {
+      path: candidates[0].path,
+      entry: candidates[0],
+    };
+  }
   return null;
 }
 
 export {
   ensureFrontmatterIndex,
   rebuildFrontmatterIndex,
+  findFrontmatterCandidates,
   refreshFrontmatterIndexEntry,
   resolveNoteByFrontmatter,
   FrontmatterIndexEntry,

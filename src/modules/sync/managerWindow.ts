@@ -9,6 +9,7 @@ export interface SyncDataType {
   noteName: string;
   lastSync: string;
   filePath: string;
+  presence: string;
 }
 
 export interface SyncHistoryDataType {
@@ -23,6 +24,23 @@ export interface SyncHistoryDataType {
 
 function managerText(zh: string, en: string) {
   return String(Zotero.locale || "").toLowerCase().startsWith("zh") ? zh : en;
+}
+
+function getPresenceLabel(
+  noteItem: Zotero.Item,
+  presenceState: string,
+) {
+  if (!addon.api.obsidian.isManagedNote(noteItem)) {
+    return managerText("普通", "Regular");
+  }
+  switch (presenceState) {
+    case "tombstoned":
+      return managerText("墓碑", "Tombstoned");
+    case "missing":
+      return managerText("缺失", "Missing");
+    default:
+      return managerText("活跃", "Active");
+  }
 }
 
 export async function showSyncManager() {
@@ -67,6 +85,11 @@ export async function showSyncManager() {
           label: getString("syncManager-filePath"),
           fixedWidth: false,
         },
+        {
+          dataKey: "presence",
+          label: managerText("状态", "Status"),
+          fixedWidth: false,
+        },
       ],
       showHeader: true,
       multiSelect: true,
@@ -80,6 +103,7 @@ export async function showSyncManager() {
         noteName: row?.noteName || "no data",
         lastSync: row?.lastSync || "no data",
         filePath: row?.filePath || "no data",
+        presence: row?.presence || "no data",
       };
     })
     .setProp("onSelectionChange", () => {
@@ -167,6 +191,19 @@ export async function showSyncManager() {
   const clearHistoryButton = win.document.querySelector(
     "#clearHistory",
   ) as HTMLButtonElement;
+  const restoreButton = win.document.querySelector(
+    "#restoreManaged",
+  ) as HTMLButtonElement;
+  const rebindButton = win.document.querySelector(
+    "#rebindManaged",
+  ) as HTMLButtonElement;
+  const unlinkButton = win.document.querySelector(
+    "#unlinkManaged",
+  ) as HTMLButtonElement;
+
+  restoreButton.textContent = managerText("恢复", "Restore");
+  rebindButton.textContent = managerText("重绑", "Rebind");
+  unlinkButton.textContent = managerText("解绑", "Unlink");
 
   refreshButton.addEventListener("click", () => {
     void refresh();
@@ -188,12 +225,30 @@ export async function showSyncManager() {
   clearHistoryButton.addEventListener("click", () => {
     void clearHistoryForSelection();
   });
+  restoreButton.addEventListener("click", async () => {
+    await addon.api.obsidian.restoreManagedNotes(
+      Zotero.Items.get(getSelectedNoteIds()),
+    );
+    await refresh();
+  });
+  rebindButton.addEventListener("click", async () => {
+    await addon.api.obsidian.rebindManagedNotes(
+      Zotero.Items.get(getSelectedNoteIds()),
+    );
+    await refresh();
+  });
+  unlinkButton.addEventListener("click", async () => {
+    await addon.api.obsidian.unlinkManagedNotes(
+      Zotero.Items.get(getSelectedNoteIds()),
+    );
+    await refresh();
+  });
 
   updateHistoryPreview();
   updateButtons();
 }
 
-const sortDataKeys = ["noteName", "lastSync", "filePath"] as Array<
+const sortDataKeys = ["noteName", "lastSync", "filePath", "presence"] as Array<
   keyof SyncDataType
 >;
 
@@ -202,11 +257,16 @@ async function updateData() {
   addon.data.sync.manager.data = (await addon.api.sync.getSyncNoteIds())
     .map((noteId) => {
       const syncStatus = addon.api.sync.getSyncStatus(noteId);
+      const noteItem = Zotero.Items.get(noteId);
       return {
         noteId,
-        noteName: Zotero.Items.get(noteId).getNoteTitle(),
+        noteName: noteItem.getNoteTitle(),
         lastSync: new Date(syncStatus.lastsync).toLocaleString(),
         filePath: jointPath(syncStatus.path, syncStatus.filename),
+        presence: getPresenceLabel(
+          noteItem,
+          addon.api.obsidian.getManagedPresenceState(noteItem),
+        ),
       };
     })
     .sort((a, b) => {
@@ -257,8 +317,21 @@ function updateButtons() {
   const clearHistoryButton = win.document.querySelector(
     "#clearHistory",
   ) as HTMLButtonElement;
+  const restoreButton = win.document.querySelector(
+    "#restoreManaged",
+  ) as HTMLButtonElement;
+  const rebindButton = win.document.querySelector(
+    "#rebindManaged",
+  ) as HTMLButtonElement;
+  const unlinkButton = win.document.querySelector(
+    "#unlinkManaged",
+  ) as HTMLButtonElement;
+  const hasSelection = Boolean(getSelectedNoteIds().length);
   unSyncButton.disabled = !getSelectedNoteIds().length;
   clearHistoryButton.disabled = !addon.data.sync.manager.historyData.length;
+  restoreButton.disabled = !hasSelection;
+  rebindButton.disabled = !hasSelection;
+  unlinkButton.disabled = !hasSelection;
 }
 
 function updateHistoryPreview() {

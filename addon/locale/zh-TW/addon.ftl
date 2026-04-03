@@ -1,0 +1,211 @@
+pref-title=Obsidian Bridge for Zotero
+
+close-shortcut =
+    .key = w
+
+menuEditor-resizeImage=缩放图片
+menuEditor-copy = 复制笔记链接...
+menuEditor-copyLine = 复制行链接 (L{ $line })
+menuEditor-copySection = 复制节链接 (Sec. { $section })
+
+templateEditor-templateType = 类型
+templateEditor-templateName = 名称
+
+templateEditor-templateDisplayName =
+    .QuickInsertV3 = Quick Insert (插入链接)
+    .QuickImportV2 = Quick Import (嵌入链接笔记)
+    .QuickNoteV5 = Quick Note (从批注创建笔记)
+    .ExportMDFileNameV2 = Export File Name (导出文件名)
+    .ExportMDFileHeaderV2 = Export MD File Header (导出MD头)
+    .ExportMDFileContent = Export MD File Content (导出MD正文)
+    .ExportLatexFileContent = Export Latex File Content (导出Latex正文)
+
+templateEditor-templateDisplayType =
+    .system = 内置
+    .item = 条目
+    .text = 文本
+    .unknown = ?
+
+templateEditor-templateHelp =
+    .system = 用于特定目的，例如生成笔记链接。
+    .item = 可以从一个或多个选定的条目生成笔记片段。
+    .text = 可以生成笔记片段。不需要任何输入。
+
+editor-resizeImage-title = 缩放图片
+editor-resizeImage-prompt = 缩放图片宽度为：
+editor-previewImage-title = 预览图片
+
+syncManager-noteName=笔记名称
+syncManager-lastSync=最近同步
+syncManager-filePath=MarkDown路径
+syncManager-detectConfirmInfo = 扫描到{$total}项由本插件同步的markdown文件 (来自{$dir})
+    将要新同步{$new}项, 将要覆盖{$current}项
+    确定应用这些更改吗?
+
+syncInfo-syncTo=MarkDown路径
+syncInfo-lastSync=最近同步
+syncInfo-sync=同步
+syncInfo-unSync=取消同步
+syncInfo-reveal=在文件夹中显示
+syncInfo-manager=同步管理
+syncInfo-export=导出为...
+syncInfo-cancel=关闭
+
+sync-start-hint=自动同步已启用, 间隔
+sync-stop-hint=自动同步已停止
+sync-running-hint-title=笔记同步
+sync-running-hint-check=检查状态
+sync-running-hint-updateMD=更新MarkDown
+sync-running-hint-updateNote=更新笔记
+sync-running-hint-diff=确认合并
+sync-running-hint-finish=同步完成
+sync-running-hint-synced=已同步
+sync-running-hint-upToDate=已最新
+
+fileInterface-sync=同步到
+
+workspace-switchOutline=切换大纲模式
+workspace-saveOutlineImage=保存图片
+workspace-saveOutlineFreeMind=保存思维导图
+workspace-emptyWorkspaceGuideInfo = 没有打开的工作区笔记。您可以：
+workspace-emptyWorkspaceGuideOpen = 打开现有笔记
+workspace-emptyWorkspaceGuideOr = 或
+workspace-emptyWorkspaceGuideCreate = 创建新笔记
+
+editor-toolbar-settings-openAsTab = 打开笔记到新标签页
+editor-toolbar-settings-openAsWindow = 在 Obsidian Bridge 窗口中打开笔记
+editor-toolbar-settings-showInLibrary = 在文库中显示
+editor-toolbar-settings-insertTemplate=插入模板
+editor-toolbar-settings-refreshTemplates = 更新模板生成内容
+editor-toolbar-settings-copyLink=复制行(L{ $line })
+editor-toolbar-settings-copyLinkAtSection=复制节(Sec. { $section })
+editor-toolbar-settings-openParent=打开附件
+editor-toolbar-settings-export=导出当前笔记...
+editor-toolbar-settings-refreshSyncing=立即同步
+editor-toolbar-settings-updateRelatedNotes = 更新关联笔记
+
+templatePicker-itemData-info=在文库中被选中。请选择模板数据源：
+templatePicker-itemData-useLibrary=使用文库中选中的条目
+templatePicker-itemData-useCustom=另作选择...
+templatePicker-itemData-title=选择条目模板数据源
+
+alert-notValidCollectionError=请选择一个有效的分类。
+alert-notValidParentItemError=无效的父条目。
+alert-syncImportedNotes = 保持导入的笔记与 MarkDown 文件同步？
+alert-linkCreator-emptyNote = 无法从/向空笔记创建链接。
+alert-templateEditor-shouldImport = 似乎您正在尝试直接保存一个笔记模板分享代码。您想要将其导入为模板吗？
+alert-templateEditor-unsaved = 您在模板编辑器中有未保存的更改。您想要保存它们吗？
+obsidian-sync-noSelection = 请先在文库中选中至少一篇文献条目。
+obsidian-sync-missingNotesDir = 请先在插件设置中配置 Obsidian 文献笔记目录。
+obsidian-sync-missingVaultRoot = 你配置的 Obsidian Vault 根目录不存在，请检查设置。
+obsidian-sync-finished = 已同步 { $count } 篇文献到 Obsidian。
+obsidian-sync-showInFolder = 在文件夹中显示
+obsidian-sync-noItemsInScope = 当前同步范围内没有可同步的文献条目。
+obsidian-sync-error = 同步失败：{ $detail }
+obsidian-translateMissingMetadata-unavailable = 缺失翻译补全已跳过：未安装 Translate for Zotero，或其公开 API 当前不可用。
+obsidian-translateMissingMetadata-failed = 至少有一篇文献的缺失翻译补全失败，当前将继续按原始内容同步。详情：{ $detail }
+obsidian-childNotePicker-title = 选择要嫁接的子笔记
+obsidian-childNotePicker-help = 这篇文献命中了多条子笔记。默认全部勾选；取消勾选后，这些子笔记将不会再同步到当前文献的 Obsidian 笔记中。
+obsidian-childNotePicker-confirm = 确认同步
+obsidian-childNotePicker-cancel = 取消
+obsidian-note-metadata-title = 元数据
+obsidian-note-metadata-column-key = 字段
+obsidian-note-metadata-column-value = 值
+obsidian-note-tags-title = 本文标签
+obsidian-note-abstract-title = 摘要
+obsidian-note-abstractTranslation-title = 摘要翻译
+obsidian-note-hiddenInfo-title = 隐藏信息
+obsidian-note-emptyAbstract = _暂无摘要。_
+obsidian-note-emptyAbstractTranslation = _暂无摘要翻译。_
+obsidian-note-userSection-workspace = 笔记区
+obsidian-note-userSection-summary = 一句话总结
+obsidian-note-userSection-problem = 研究问题
+obsidian-note-userSection-method = 核心方法
+obsidian-note-userSection-conclusion = 主要结论
+obsidian-note-userSection-notes = 笔记
+obsidian-note-userSection-questions = 问题
+obsidian-note-userSection-related = 关联
+obsidian-metadataPreset-defaultName = 默认配置
+obsidian-metadataPreset-migratedName = 迁移配置
+obsidian-metadataPreset-untitledName = 未命名配置
+obsidian-metadataPreset-newName = 新配置
+obsidian-metadataPreset-saveAs-finished = 已另存并启用配置“{ $name }”。
+obsidian-metadataPreset-save-finished = 配置“{ $name }”已保存并重新同步。
+obsidian-metadataPreset-switch-finished = 已切换到配置“{ $name }”，并重新同步联动笔记。
+obsidian-metadataPreset-delete-lastBlocked = 至少需要保留一个元数据配置。
+obsidian-metadataPreset-delete-finished = 已删除当前配置，并切换到“{ $name }”。
+obsidian-metadataPreset-reset-finished = 已恢复当前配置的默认字段，请点击“保存当前配置”应用。
+obsidian-metadataPreset-defaultSection = 通用字段
+obsidian-frontmatter-option-titleTranslation = 中文标题与别名
+obsidian-frontmatter-option-itemType = 文献类型（中英）
+obsidian-frontmatter-option-date = 日期与年份
+obsidian-frontmatter-option-doi = DOI
+obsidian-frontmatter-option-citationKey = Citation Key
+obsidian-frontmatter-option-publication = 刊物 / 来源
+obsidian-frontmatter-option-itemLink = Zotero 条目链接
+obsidian-frontmatter-option-pdfLink = PDF 附件链接
+obsidian-frontmatter-option-authors = 作者列表
+obsidian-frontmatter-option-collections = 所在分类
+obsidian-frontmatter-option-zoteroTags = Zotero 标签（回写入口）
+obsidian-frontmatter-option-rating = 评分
+obsidian-fieldLabel-itemType = 文献类型
+obsidian-fieldLabel-itemTypeKey = 文献类型 Key
+obsidian-fieldLabel-titleTranslation = 标题翻译
+obsidian-fieldLabel-abstract = 摘要
+obsidian-fieldLabel-abstractTranslation = 摘要翻译
+obsidian-fieldLabel-creators = 作者
+obsidian-fieldLabel-collection = 分类
+obsidian-fieldLabel-itemLink = Zotero 条目链接
+obsidian-fieldLabel-pdfLink = PDF 附件
+obsidian-fieldLabel-related = 关联文献
+obsidian-fieldLabel-JCRQ = JCR 分区
+obsidian-fieldLabel-qnkey = Zotero 条目 Key
+obsidian-fieldLabel-tags = 标签
+obsidian-fieldLabel-dateY = 年份
+obsidian-fieldLabel-datetimeAdded = 添加时间
+obsidian-fieldLabel-datetimeModified = 修改时间
+obsidian-fieldLabel-citationKey = Citation Key
+obsidian-itemType-journalArticle = 期刊文章
+obsidian-itemType-conferencePaper = 会议论文
+obsidian-itemType-thesis = 学位论文
+obsidian-itemType-book = 图书
+obsidian-itemType-bookSection = 书籍章节
+obsidian-itemType-patent = 专利
+obsidian-sync-noManagedNotes = 当前还没有已联动到 Obsidian 的文献笔记。
+obsidian-sync-managedNotesResynced = 已按当前配置重同步 { $count } 篇 Obsidian 联动笔记。
+obsidian-repairManagedLinks-none = 暂未恢复到任何 Obsidian 联动映射。
+obsidian-repairManagedLinks-finished = 已恢复 { $mappings } 条联动映射、{ $records } 条同步记录，发现 { $conflicts } 条冲突。
+
+userGuide-start-title = 欢迎使用 Obsidian Bridge！
+userGuide-start-desc = Obsidian Bridge for Zotero 专注于把 Zotero 8 的笔记、元数据和受管 Markdown 工作流桥接到 Obsidian。本指南会带您快速熟悉它的核心功能。
+userGuide-start-close = 稍后提醒我
+userGuide-createNoteButton-title = 创建新笔记
+userGuide-createNoteButton-desc = 您可以在这里创建笔记：空白或从模板创建。
+userGuide-createNote-title = 创建新笔记
+userGuide-createNote-desc = 看来您还没有任何笔记，让我们创建一个。
+userGuide-createNoteFound-desc = 在您的库中找到了一些笔记。将打开其中一个作为例子。
+userGuide-openNote-title = 打开笔记
+userGuide-openNote-desc = 您可以通过双击在 Obsidian Bridge 工作区标签页中打开一个笔记。
+userGuide-openNote-next = 打开笔记
+userGuide-workspace-title = 笔记标签页
+userGuide-workspace-desc = 笔记标签页（原工作区）是您可以编辑笔记内容、查看大纲和管理笔记链接关系的地方。
+userGuide-workspaceEditor-title = 笔记编辑器
+userGuide-workspaceEditor-desc = 编辑器支持富文本编辑、代码块、数学块等。
+userGuide-workspaceEditorToolbar-title = 笔记编辑器 - 工具栏
+userGuide-workspaceEditorToolbar-desc = 工具栏提供对常见编辑功能的快速访问。
+    您可以在这里设置标题、文本/背景颜色、文本样式、插入链接或引用。
+userGuide-workspaceEditorLinkCreator-title = 笔记编辑器 - 链接精灵
+userGuide-workspaceEditorLinkCreator-desc = 您可以通过链接精灵创建从/到另一个笔记的链接。
+userGuide-workspaceEditorMoreOptions-title = 笔记编辑器 - 更多选项
+userGuide-workspaceEditorMoreOptions-desc = 在新窗口中打开笔记，显示在库中，插入模板，复制链接，导出笔记等。
+userGuide-workspaceOutline-title = 大纲
+userGuide-workspaceOutline-desc = 大纲显示了笔记的结构。您可以通过点击它来导航到一个部分。
+userGuide-workspaceOutlineMode-title = 大纲模式
+userGuide-workspaceOutlineMode-desc = 切换到大纲模式以不同的方式查看笔记结构。
+userGuide-workspaceOutlineSaveAs-title = 另存为
+userGuide-workspaceOutlineSaveAs-desc = 您可以将笔记导出为多种格式，包括PDF、Markdown、MS Word、思维导图等。
+userGuide-workspaceNoteInfo-title = 笔记信息
+userGuide-workspaceNoteInfo-desc = 您可以查看、编辑和管理笔记的标签、关系和链接。
+userGuide-finish-title = 准备完成！
+userGuide-finish-desc = 祝您顺利搭建自己的 Zotero 8 到 Obsidian 工作流！
+    您可以随时从菜单栏 - 帮助再次运行此指南。

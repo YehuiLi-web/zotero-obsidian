@@ -59,6 +59,14 @@ class Addon {
     };
     obsidian: {
       itemNoteMap?: Record<string, string>;
+      managedPathRegistry?: Record<
+        string,
+        import("./modules/obsidian/types").ManagedPathRegistryEntry
+      >;
+      managedNoteRegistry?: Record<
+        string,
+        import("./modules/obsidian/types").ManagedNoteRegistryEntry
+      >;
       metadataPresetLibrary?: any;
     };
     imageViewer: {
