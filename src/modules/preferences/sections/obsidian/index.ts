@@ -3,6 +3,7 @@ import { getString } from "../../../../utils/locale";
 import { getPref, setPref } from "../../../../utils/prefs";
 import { formatPath } from "../../../../utils/str";
 import { openTemplatePicker } from "../../../../utils/templatePicker";
+import { migrateObsidianFileNameTemplatePref } from "../../../obsidian/fileNameTemplate";
 import {
   DEFAULT_CHILD_NOTE_TAGS,
   OBSIDIAN_CHILD_NOTE_PROMPT_SELECT_INPUT_ID,
@@ -118,7 +119,8 @@ import {
 async function chooseObsidianItemTemplate(
   currentTemplate = resolveObsidianItemTemplateName(),
 ) {
-  const templateNames = await getObsidianItemTemplateCandidates(currentTemplate);
+  const templateNames =
+    await getObsidianItemTemplateCandidates(currentTemplate);
   const selectedTemplates = await openTemplatePicker({
     templates: templateNames,
     selected: [currentTemplate],
@@ -378,12 +380,12 @@ function localizeStaticObsidianPrefsUI(prefDoc: Document) {
   setStaticPrefChoiceText(
     root,
     `#${OBSIDIAN_OPEN_AFTER_SYNC_INPUT_ID}`,
-    getString("obsidian-openAfterSync", "label"),
+    uiText("同步后在 Ob 打开", "Open in Obsidian"),
   );
   setStaticPrefChoiceText(
     root,
     `#${OBSIDIAN_REVEAL_AFTER_SYNC_INPUT_ID}`,
-    getString("obsidian-revealAfterSync", "label"),
+    uiText("同步后在文件夹显示", "Reveal in folder"),
   );
   setStaticPrefText(
     root,
@@ -545,7 +547,10 @@ async function pickObsidianPath(
     }
     if (!String(getPref("obsidian.dashboardDir") || "").trim()) {
       setPref("obsidian.dashboardDir", defaults.dashboardDir);
-      setPrefElementValue(OBSIDIAN_DASHBOARD_DIR_INPUT_ID, defaults.dashboardDir);
+      setPrefElementValue(
+        OBSIDIAN_DASHBOARD_DIR_INPUT_ID,
+        defaults.dashboardDir,
+      );
     }
   }
 }
@@ -567,6 +572,7 @@ function refreshObsidianPrefsUI() {
   }
   try {
     resetObsidianPrefsRenderRetryCount();
+    migrateObsidianFileNameTemplatePref();
 
     // Build the HTML shell (replaces loading placeholder with full pane structure).
     // Must happen before localization or hydration, which expect the elements to exist.
@@ -601,16 +607,12 @@ function refreshObsidianPrefsUI() {
         getBooleanPrefOrDefault(OBSIDIAN_CHILD_NOTE_PROMPT_SELECT_PREF, true),
       );
     }
-    if (
-      String(getPref(OBSIDIAN_FILE_NAME_TEMPLATE_PREF) || "") !==
-      getManagedFileNamePattern()
-    ) {
-      setPref(OBSIDIAN_FILE_NAME_TEMPLATE_PREF, getManagedFileNamePattern());
-    }
     if (!cleanInline(String(getPref(OBSIDIAN_SYNC_SCOPE_PREF) || ""))) {
       setPref(
         OBSIDIAN_SYNC_SCOPE_PREF,
-        normalizeObsidianSyncScope(String(getPref(OBSIDIAN_SYNC_SCOPE_PREF) || "")),
+        normalizeObsidianSyncScope(
+          String(getPref(OBSIDIAN_SYNC_SCOPE_PREF) || ""),
+        ),
       );
     }
     if (!cleanInline(String(getPref(OBSIDIAN_ITEM_TEMPLATE_PREF) || ""))) {
@@ -660,7 +662,9 @@ function refreshObsidianPrefsUI() {
     renderSyncSummary();
     renderConnectionTestResult();
 
-    const currentPreviewSignature = buildPreviewSignature(getPreviewSourceItem());
+    const currentPreviewSignature = buildPreviewSignature(
+      getPreviewSourceItem(),
+    );
     if (
       obsidianPrefsState.preview.status === "ready" &&
       obsidianPrefsState.preview.signature !== currentPreviewSignature

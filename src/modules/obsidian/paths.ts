@@ -1,5 +1,6 @@
 import { getPref } from "../../utils/prefs";
 import { formatPath, jointPath } from "../../utils/str";
+import { getObsidianFileNameTemplate } from "./fileNameTemplate";
 import {
   cleanInline,
   firstValue,
@@ -12,7 +13,6 @@ import {
   setObsidianItemNoteMap,
   getItemMapKey,
   DEFAULT_OBSIDIAN_FILE_NAME_TEMPLATE,
-  OBSIDIAN_FILE_NAME_TEMPLATE_PREF,
 } from "./settings";
 import {
   FrontmatterIndexEntry,
@@ -377,20 +377,14 @@ function applyManagedFileNameTemplate(
 }
 
 function getManagedFileNamePattern() {
-  const userTemplate = String(
-    getPref(OBSIDIAN_FILE_NAME_TEMPLATE_PREF) || "",
-  ).trim();
-  return userTemplate || DEFAULT_OBSIDIAN_FILE_NAME_TEMPLATE;
+  return getObsidianFileNameTemplate();
 }
 
-function buildManagedObsidianFileName(
-  topItem: Zotero.Item,
-  noteItem: Zotero.Item,
+function renderManagedObsidianFileNameFromTemplateContext(
+  context: Record<string, string>,
 ) {
-  const context = buildManagedFileNameTemplateContext(topItem, noteItem);
   const fallbackBaseName = `${
-    sanitizeFileNamePart(getFieldSafe(topItem, "title") || topItem.key) ||
-    topItem.key
+    sanitizeFileNamePart(context.title || context.key) || context.key
   }--${context.uniqueKey || context.key}`;
   const fileName = applyManagedFileNameTemplate(
     getManagedFileNamePattern(),
@@ -399,11 +393,21 @@ function buildManagedObsidianFileName(
   return ensureMarkdownExtension(fileName || fallbackBaseName);
 }
 
+function buildManagedObsidianFileName(
+  topItem: Zotero.Item,
+  noteItem: Zotero.Item,
+) {
+  const context = buildManagedFileNameTemplateContext(topItem, noteItem);
+  return renderManagedObsidianFileNameFromTemplateContext(context);
+}
+
 function getCitationKeyForItem(topItem: Zotero.Item) {
   if (!topItem?.isRegularItem()) {
     return "";
   }
-  const direct = cleanInline(String(getFieldSafe(topItem, "citationKey") || ""));
+  const direct = cleanInline(
+    String(getFieldSafe(topItem, "citationKey") || ""),
+  );
   if (direct) {
     return direct;
   }
@@ -516,6 +520,7 @@ export {
   buildManagedFileNameTemplateContext,
   applyManagedFileNameTemplate,
   getManagedFileNamePattern,
+  renderManagedObsidianFileNameFromTemplateContext,
   buildManagedObsidianFileName,
   getCitationKeyForItem,
   resolveManagedNoteBinding,

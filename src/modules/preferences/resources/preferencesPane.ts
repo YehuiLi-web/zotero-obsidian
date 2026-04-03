@@ -70,9 +70,9 @@ window[`${config.addonRef}PrefsPane`] = {
 
 // Zotero may or may not call init() at the right time depending on the version.
 // Use a MutationObserver to call init() ourselves as soon as our pane content
-// (identified by data-bn-section="basic") appears in the document.
+// (identified by data-bn-section="obsidian") appears in the document.
 (function setupAutoInit() {
-  const PANE_SELECTOR = '[data-bn-section="basic"]';
+  const PANE_SELECTOR = '[data-bn-section="obsidian"]';
 
   function tryInit(): boolean {
     if (document.querySelector(PANE_SELECTOR)) {

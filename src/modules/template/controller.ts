@@ -1,7 +1,7 @@
 import YAML = require("yamljs");
 import { getPref } from "../../utils/prefs";
 import { showHint } from "../../utils/hint";
-import { config } from "../../../package.json";
+import { ChunkedTemplatePrefStore } from "./store";
 
 export {
   getTemplateKeys,
@@ -14,11 +14,7 @@ export {
 };
 
 function initTemplates() {
-  addon.data.template.data = new ztoolkit.LargePref(
-    `${config.prefsPrefix}.templateKeys`,
-    `${config.prefsPrefix}.template.`,
-    "parser",
-  );
+  addon.data.template.data = new ChunkedTemplatePrefStore();
   // Convert old template keys to new format
   const raw = getPref("templateKeys") as string;
   let keys: Array<{ name: string } | string> = raw ? JSON.parse(raw) : [];

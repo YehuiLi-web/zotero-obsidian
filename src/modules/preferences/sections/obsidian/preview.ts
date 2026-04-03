@@ -5,7 +5,10 @@ import {
   DEFAULT_CHILD_NOTE_TAGS,
   OBSIDIAN_CHILD_NOTE_TAGS_PREF,
 } from "../../../obsidian/childNotes";
-import { buildFrontmatter, buildManagedFrontmatterData } from "../../../obsidian/frontmatter";
+import {
+  buildFrontmatter,
+  buildManagedFrontmatterData,
+} from "../../../obsidian/frontmatter";
 import {
   buildAbstractCallout,
   buildHiddenInfoCallout,
@@ -21,11 +24,9 @@ import {
 } from "../../../obsidian/markdown";
 import {
   buildManagedObsidianFileName,
-  ensureMarkdownExtension,
   getAttachmentRelativeDir,
   getManagedFileNamePattern,
-  getManagedObsidianUniqueKey,
-  sanitizeFileNamePart,
+  renderManagedObsidianFileNameFromTemplateContext,
 } from "../../../obsidian/paths";
 import { cleanInline } from "../../../obsidian/shared";
 import {
@@ -43,7 +44,10 @@ import {
   OBSIDIAN_SYNC_SCOPE_PREF,
   OBSIDIAN_UPDATE_STRATEGY_PREF,
 } from "../../../obsidian/settings";
-import { getManagedObsidianNoteForItem, getMatchedChildNotes } from "../../../obsidian/managed";
+import {
+  getManagedObsidianNoteForItem,
+  getMatchedChildNotes,
+} from "../../../obsidian/managed";
 import { obsidianPrefsState, type ObsidianPrefsTab } from "./state";
 import {
   OBSIDIAN_CONTENT_SUMMARY_ID,
@@ -460,22 +464,21 @@ export function renderFileNamePreview() {
     return;
   }
 
+  const fileNameTemplate = getManagedFileNamePattern();
   const topItem = getPreviewSourceItem();
   const fileName = topItem
     ? buildManagedObsidianFileName(
         topItem,
         getPreviewNoteItem(topItem, getManagedObsidianNoteForItem(topItem)),
       )
-    : ensureMarkdownExtension(
-        `${getPreviewFallbackFileNameContext().title} -- ${
-          getPreviewFallbackFileNameContext().uniqueKey
-        }`,
+    : renderManagedObsidianFileNameFromTemplateContext(
+        getPreviewFallbackFileNameContext(),
       );
 
   if (rule) {
     rule.textContent = uiText(
-      "固定命名：标题 -- 稳定短哈希",
-      "Fixed naming: title -- stable short hash",
+      `当前规则：${fileNameTemplate}`,
+      `Current rule: ${fileNameTemplate}`,
     );
   }
   preview.textContent = fileName;
@@ -484,10 +487,7 @@ export function renderFileNamePreview() {
         `来源：${getTopItemPreferredTitle(topItem) || topItem.key}`,
         `Source: ${getTopItemPreferredTitle(topItem) || topItem.key}`,
       )
-    : uiText(
-        "未选中文献，使用示例数据。",
-        "Using sample data.",
-      );
+    : uiText("未选中文献，使用示例数据。", "Using sample data.");
 }
 
 export function renderContentSummary() {
@@ -522,10 +522,10 @@ export function renderSyncSummary() {
     behaviors.push(uiText("主动监视文件变化", "watch file changes"));
   }
   if (getBooleanPrefOrDefault("obsidian.openAfterSync", true)) {
-    behaviors.push(uiText("同步后打开 Obsidian", "open Obsidian after sync"));
+    behaviors.push(uiText("同步后在 Ob 打开", "open in Obsidian"));
   }
   if (getBooleanPrefOrDefault("obsidian.revealAfterSync", false)) {
-    behaviors.push(uiText("同步后定位文件", "reveal file after sync"));
+    behaviors.push(uiText("同步后在文件夹显示", "reveal in folder"));
   }
   const translationTargets = getEnabledTranslationLabels();
 
@@ -533,7 +533,9 @@ export function renderSyncSummary() {
     `范围 ${getScopeLabel(scope)} · ${getUpdateStrategyLabel(strategy)} · ${
       notesDir || uiText("目录未设", "Folder not set")
     }${behaviors.length ? ` · ${behaviors.join("、")}` : ""}${
-      translationTargets.length ? ` · 翻译 ${translationTargets.join("、")}` : ""
+      translationTargets.length
+        ? ` · 翻译 ${translationTargets.join("、")}`
+        : ""
     }`,
     `Scope ${getScopeLabel(scope)} · ${getUpdateStrategyLabel(strategy)} · ${
       notesDir || "Folder not set"
@@ -696,12 +698,7 @@ export async function generateObsidianPreview() {
       .map((block) => String(block || "").trim())
       .filter(Boolean)
       .join("\n\n");
-    const fileName = ensureMarkdownExtension(
-      buildManagedObsidianFileName(topItem, previewNoteItem) ||
-        `${
-          sanitizeFileNamePart(context.title || topItem.key) || topItem.key
-        } -- ${getManagedObsidianUniqueKey(topItem) || topItem.key}`,
-    );
+    const fileName = buildManagedObsidianFileName(topItem, previewNoteItem);
 
     if (requestId !== obsidianPrefsState.previewRequest) {
       return;

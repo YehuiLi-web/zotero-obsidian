@@ -2,6 +2,10 @@ import { getString } from "../../utils/locale";
 import { getPref } from "../../utils/prefs";
 import { fileExists, formatPath, jointPath } from "../../utils/str";
 import {
+  getObsidianFileNameTemplate,
+  migrateObsidianFileNameTemplatePref,
+} from "./fileNameTemplate";
+import {
   getAttachmentRelativeDir,
   getDefaultDashboardDir,
   getLastPathSegment,
@@ -47,7 +51,11 @@ import type {
 // ── Re-exports from sub-modules ──
 export * from "./types";
 export * from "./constants";
-export { getObsidianItemNoteMap, setObsidianItemNoteMap, getItemMapKey } from "./itemNoteMap";
+export {
+  getObsidianItemNoteMap,
+  setObsidianItemNoteMap,
+  getItemMapKey,
+} from "./itemNoteMap";
 export {
   getMetadataPreset,
   getMetadataPresetLibrary,
@@ -107,11 +115,26 @@ export function normalizeObsidianUpdateStrategy(
 
 export function getManagedNoteContentConfig(): ManagedNoteContentConfig {
   return {
-    includeMetadata: getBooleanPrefOrDefault(OBSIDIAN_INCLUDE_METADATA_PREF, true),
-    includeAbstract: getBooleanPrefOrDefault(OBSIDIAN_INCLUDE_ABSTRACT_PREF, true),
-    includeHiddenInfo: getBooleanPrefOrDefault(OBSIDIAN_INCLUDE_HIDDEN_INFO_PREF, true),
-    includeAnnotations: getBooleanPrefOrDefault(OBSIDIAN_INCLUDE_ANNOTATIONS_PREF, true),
-    includeChildNotes: getBooleanPrefOrDefault(OBSIDIAN_INCLUDE_CHILD_NOTES_PREF, true),
+    includeMetadata: getBooleanPrefOrDefault(
+      OBSIDIAN_INCLUDE_METADATA_PREF,
+      true,
+    ),
+    includeAbstract: getBooleanPrefOrDefault(
+      OBSIDIAN_INCLUDE_ABSTRACT_PREF,
+      true,
+    ),
+    includeHiddenInfo: getBooleanPrefOrDefault(
+      OBSIDIAN_INCLUDE_HIDDEN_INFO_PREF,
+      true,
+    ),
+    includeAnnotations: getBooleanPrefOrDefault(
+      OBSIDIAN_INCLUDE_ANNOTATIONS_PREF,
+      true,
+    ),
+    includeChildNotes: getBooleanPrefOrDefault(
+      OBSIDIAN_INCLUDE_CHILD_NOTES_PREF,
+      true,
+    ),
   };
 }
 
@@ -134,7 +157,9 @@ export function getMissingMetadataTranslationConfig(): MissingMetadataTranslatio
 
 // ── Path helpers ──
 
-export function deriveObsidianPathDefaults(vaultRoot: string): ObsidianPathDefaults {
+export function deriveObsidianPathDefaults(
+  vaultRoot: string,
+): ObsidianPathDefaults {
   const rawVaultRoot = cleanInline(vaultRoot);
   const preferPosixStyle =
     rawVaultRoot.startsWith("/") && !rawVaultRoot.includes("\\");
@@ -156,13 +181,14 @@ export function deriveObsidianPathDefaults(vaultRoot: string): ObsidianPathDefau
       .join("/");
   };
   const vaultName =
-    normalizedVaultRoot.split(/[\\\/]/).filter(Boolean).pop() || "";
+    normalizedVaultRoot
+      .split(/[\\\/]/)
+      .filter(Boolean)
+      .pop() || "";
   return {
     vaultRoot: normalizedVaultRoot,
     vaultName,
-    notesDir: normalizedVaultRoot
-      ? joinPath(normalizedVaultRoot, "notes")
-      : "",
+    notesDir: normalizedVaultRoot ? joinPath(normalizedVaultRoot, "notes") : "",
     assetsDir: normalizedVaultRoot
       ? joinPath(normalizedVaultRoot, "assets", "zotero")
       : "",
@@ -348,13 +374,13 @@ export async function ensureObsidianSettings(): Promise<ObsidianSettings> {
     autoSync: Boolean(getPref("obsidian.autoSync")),
     openAfterSync: Boolean(getPref(OBSIDIAN_OPEN_AFTER_SYNC_PREF)),
     revealAfterSync: Boolean(getPref("obsidian.revealAfterSync")),
-    dashboardAutoSetup: getBooleanPrefOrDefault(OBSIDIAN_DASHBOARD_AUTO_SETUP_PREF, true),
+    dashboardAutoSetup: getBooleanPrefOrDefault(
+      OBSIDIAN_DASHBOARD_AUTO_SETUP_PREF,
+      true,
+    ),
     attachmentFolder: getAttachmentRelativeDir(notesDir, assetsDir),
     itemTemplate: resolveObsidianItemTemplateName(),
-    fileNameTemplate: getStringPrefOrDefault(
-      OBSIDIAN_FILE_NAME_TEMPLATE_PREF,
-      DEFAULT_OBSIDIAN_FILE_NAME_TEMPLATE,
-    ),
+    fileNameTemplate: getObsidianFileNameTemplate(),
     syncScope: normalizeObsidianSyncScope(
       String(getPref(OBSIDIAN_SYNC_SCOPE_PREF) || ""),
     ),
@@ -425,7 +451,9 @@ export function getManagedFrontmatterFields() {
   );
 }
 
-export function setManagedFrontmatterFields(fields: ManagedFrontmatterOptionKey[]) {
+export function setManagedFrontmatterFields(
+  fields: ManagedFrontmatterOptionKey[],
+) {
   const normalized = normalizeManagedFrontmatterFields(
     JSON.stringify(fields || []),
   );
@@ -485,7 +513,9 @@ export function getManagedFrontmatterPresetLabel(
   }
 }
 
-export function getManagedFrontmatterOptionLabel(key: ManagedFrontmatterOptionKey) {
+export function getManagedFrontmatterOptionLabel(
+  key: ManagedFrontmatterOptionKey,
+) {
   const localeKey = MANAGED_FRONTMATTER_OPTION_LABEL_KEYS[key];
   return localeKey ? getString(localeKey as any) : key;
 }
@@ -546,6 +576,7 @@ export async function initObsidianStorage() {
   const { loadRegistry } = await import("./registry");
   const { initMetadataPresetLibrary } = await import("./metadataPreset");
   const { initObsidianItemNoteMap } = await import("./itemNoteMap");
+  migrateObsidianFileNameTemplatePref();
   await loadRegistry();
   await initObsidianItemNoteMap();
   await initMetadataPresetLibrary();

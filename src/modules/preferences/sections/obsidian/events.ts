@@ -1,5 +1,6 @@
 import { getPref, setPref } from "../../../../utils/prefs";
 import { formatPath } from "../../../../utils/str";
+import { normalizeObsidianFileNameTemplate } from "../../../obsidian/fileNameTemplate";
 import {
   DEFAULT_CHILD_NOTE_TAGS,
   OBSIDIAN_CHILD_NOTE_PROMPT_SELECT_INPUT_ID,
@@ -21,6 +22,8 @@ import {
   OBSIDIAN_DASHBOARD_AUTO_SETUP_PREF,
   OBSIDIAN_DASHBOARD_DIR_INPUT_ID,
   OBSIDIAN_DASHBOARD_DIR_PREF,
+  OBSIDIAN_FILE_NAME_TEMPLATE_INPUT_ID,
+  OBSIDIAN_FILE_NAME_TEMPLATE_PREF,
   OBSIDIAN_INCLUDE_ABSTRACT_INPUT_ID,
   OBSIDIAN_INCLUDE_ABSTRACT_PREF,
   OBSIDIAN_INCLUDE_ANNOTATIONS_INPUT_ID,
@@ -54,6 +57,18 @@ import {
   OBSIDIAN_UPDATE_STRATEGY_GROUP_NAME,
   OBSIDIAN_VAULT_ROOT_INPUT_ID,
   OBSIDIAN_WATCH_FILES_INPUT_ID,
+  OBSIDIAN_WORKFLOW_ANNOTATION_TAG_SYNC_INPUT_ID,
+  OBSIDIAN_WORKFLOW_ATTACHMENT_FOLDER_INPUT_ID,
+  OBSIDIAN_WORKFLOW_EXPAND_LEVEL_INPUT_ID,
+  OBSIDIAN_WORKFLOW_EXPORT_NOTES_INPUT_ID,
+  OBSIDIAN_WORKFLOW_KEEP_LINKS_INPUT_ID,
+  OBSIDIAN_WORKFLOW_MAGIC_KEY_INPUT_ID,
+  OBSIDIAN_WORKFLOW_MAGIC_KEY_SHORTCUT_INPUT_ID,
+  OBSIDIAN_WORKFLOW_MARKDOWN_PASTE_INPUT_ID,
+  OBSIDIAN_WORKFLOW_NOTE_LINK_PREVIEW_GROUP_NAME,
+  OBSIDIAN_WORKFLOW_PIN_LEFT_INPUT_ID,
+  OBSIDIAN_WORKFLOW_PIN_TOP_INPUT_ID,
+  OBSIDIAN_WORKFLOW_SYNC_PERIOD_INPUT_ID,
 } from "./uiIds";
 import {
   getObsidianResolvedPaths,
@@ -70,6 +85,7 @@ import { testObsidianConnection, updateConnectionDiagnostics } from "./connectio
 import {
   markPreviewStale,
   renderContentSummary,
+  renderFileNamePreview,
   renderSyncSummary,
   switchObsidianPrefsTab,
 } from "./preview";
@@ -78,6 +94,12 @@ import {
   showChildNoteRulesDialog,
   showFieldStudio,
 } from "./fieldStudioWindow";
+import {
+  clampWorkflowOutlineExpandLevel,
+  clampWorkflowSyncPeriodSeconds,
+  normalizeWorkflowNoteLinkPreviewType,
+  WORKFLOW_PREF_KEYS,
+} from "./workflow";
 
 export function bindObsidianPrefsEvents(
   prefDoc: Document,
@@ -106,6 +128,9 @@ export function bindObsidianPrefsEvents(
 
   const tooltipNode = ensureObsidianTooltipNode(prefDoc);
   let activeTooltipTarget: HTMLElement | null = null;
+  const requireRestart = () => {
+    addon.api?.utils?.requireRestart?.();
+  };
 
   const hideTooltip = () => {
     if (!tooltipNode) {
@@ -222,11 +247,117 @@ export function bindObsidianPrefsEvents(
     input.addEventListener("blur", persist);
   };
 
+  const bindTextPref = (
+    inputId: string,
+    prefKey: string,
+    normalize: (value: string) => string,
+    onChange?: () => void,
+  ) => {
+    const input = getPrefElement<HTMLInputElement>(inputId);
+    if (!input) {
+      return;
+    }
+    const persist = () => {
+      const normalized = normalize(input.value);
+      input.value = normalized;
+      setPref(prefKey, normalized);
+      onChange?.();
+    };
+    input.addEventListener("change", persist);
+    input.addEventListener("blur", persist);
+  };
+
+  const bindNumberPref = (
+    inputId: string,
+    prefKey: string,
+    normalize: (value: string) => number,
+    onChange?: () => void,
+  ) => {
+    const input = getPrefElement<HTMLInputElement>(inputId);
+    if (!input) {
+      return;
+    }
+    const persist = () => {
+      const normalized = normalize(input.value);
+      input.value = String(normalized);
+      setPref(prefKey, normalized);
+      onChange?.();
+    };
+    input.addEventListener("change", persist);
+    input.addEventListener("blur", persist);
+  };
+
   root.querySelectorAll<HTMLElement>("[data-ob-tab]").forEach((button) => {
     button.addEventListener("click", () => {
       switchObsidianPrefsTab(button.dataset.obTab as ObsidianPrefsTab);
     });
   });
+
+  bindBooleanPref(
+    OBSIDIAN_WORKFLOW_EXPORT_NOTES_INPUT_ID,
+    WORKFLOW_PREF_KEYS.exportNotesTakeover,
+  );
+  bindNumberPref(
+    OBSIDIAN_WORKFLOW_EXPAND_LEVEL_INPUT_ID,
+    WORKFLOW_PREF_KEYS.outlineExpandLevel,
+    clampWorkflowOutlineExpandLevel,
+    requireRestart,
+  );
+  bindBooleanPref(
+    OBSIDIAN_WORKFLOW_KEEP_LINKS_INPUT_ID,
+    WORKFLOW_PREF_KEYS.keepOutlineLinks,
+  );
+  root
+    .querySelectorAll<HTMLInputElement>(
+      `input[name="${OBSIDIAN_WORKFLOW_NOTE_LINK_PREVIEW_GROUP_NAME}"]`,
+    )
+    .forEach((input) => {
+      input.addEventListener("change", () => {
+        if (!input.checked) {
+          return;
+        }
+        setPref(
+          WORKFLOW_PREF_KEYS.noteLinkPreviewType,
+          normalizeWorkflowNoteLinkPreviewType(input.value),
+        );
+        requireRestart();
+      });
+    });
+  bindBooleanPref(
+    OBSIDIAN_WORKFLOW_MAGIC_KEY_INPUT_ID,
+    WORKFLOW_PREF_KEYS.useMagicKey,
+  );
+  bindBooleanPref(
+    OBSIDIAN_WORKFLOW_MAGIC_KEY_SHORTCUT_INPUT_ID,
+    WORKFLOW_PREF_KEYS.useMagicKeyShortcut,
+  );
+  bindBooleanPref(
+    OBSIDIAN_WORKFLOW_MARKDOWN_PASTE_INPUT_ID,
+    WORKFLOW_PREF_KEYS.useMarkdownPaste,
+  );
+  bindBooleanPref(
+    OBSIDIAN_WORKFLOW_PIN_LEFT_INPUT_ID,
+    WORKFLOW_PREF_KEYS.pinTableLeft,
+  );
+  bindBooleanPref(
+    OBSIDIAN_WORKFLOW_PIN_TOP_INPUT_ID,
+    WORKFLOW_PREF_KEYS.pinTableTop,
+  );
+  bindNumberPref(
+    OBSIDIAN_WORKFLOW_SYNC_PERIOD_INPUT_ID,
+    WORKFLOW_PREF_KEYS.syncPeriodSeconds,
+    clampWorkflowSyncPeriodSeconds,
+    requireRestart,
+  );
+  bindTextPref(
+    OBSIDIAN_WORKFLOW_ATTACHMENT_FOLDER_INPUT_ID,
+    WORKFLOW_PREF_KEYS.syncAttachmentFolder,
+    (value) => value,
+  );
+  bindBooleanPref(
+    OBSIDIAN_WORKFLOW_ANNOTATION_TAG_SYNC_INPUT_ID,
+    WORKFLOW_PREF_KEYS.annotationTagSync,
+  );
 
   bindPathInput(OBSIDIAN_APP_PATH_INPUT_ID, "obsidian.appPath", () => "", () => {
     void updateConnectionDiagnostics();
@@ -260,6 +391,15 @@ export function bindObsidianPrefsEvents(
     () => getObsidianResolvedPaths().dashboardDir,
     () => {
       void updateConnectionDiagnostics();
+    },
+  );
+  bindTextPref(
+    OBSIDIAN_FILE_NAME_TEMPLATE_INPUT_ID,
+    OBSIDIAN_FILE_NAME_TEMPLATE_PREF,
+    normalizeObsidianFileNameTemplate,
+    () => {
+      renderFileNamePreview();
+      markPreviewStale();
     },
   );
 
@@ -478,6 +618,32 @@ export function bindObsidianPrefsEvents(
     .querySelector<HTMLElement>('[data-ob-action="edit-template"]')
     ?.addEventListener("click", () => {
       addon.hooks.onShowTemplateEditor();
+    });
+  root
+    .querySelector<HTMLElement>('[data-ob-action="open-sync-manager"]')
+    ?.addEventListener("click", () => {
+      addon.hooks.onShowSyncManager?.();
+    });
+  root
+    .querySelector<HTMLElement>('[data-ob-action="open-template-editor"]')
+    ?.addEventListener("click", () => {
+      addon.hooks.onShowTemplateEditor?.();
+    });
+  root
+    .querySelectorAll<HTMLElement>("[data-ob-open-url]")
+    .forEach((element) => {
+      element.addEventListener("click", () => {
+        const url = cleanInline(element.dataset.obOpenUrl || "");
+        if (!url) {
+          return;
+        }
+        const launchURL = (Zotero as any).launchURL;
+        if (typeof launchURL === "function") {
+          launchURL.call(Zotero, url);
+          return;
+        }
+        Zotero.getActiveZoteroPane()?.loadURI(url);
+      });
     });
   root
     .querySelector<HTMLElement>('[data-ob-action="sync-now"]')

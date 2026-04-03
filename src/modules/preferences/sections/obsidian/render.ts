@@ -9,7 +9,21 @@ import {
 } from "../../../obsidian/childNotes";
 import { buildObsidianSettingsShellHTML } from "./layout";
 import { buildObsidianPrefsStyleText } from "./style";
+import { MANAGED_FILE_NAME_TEMPLATE_TOKENS } from "../../../obsidian/fileNameTemplate";
 import { cleanInline } from "../../../obsidian/shared";
+import {
+  clampWorkflowOutlineExpandLevel,
+  clampWorkflowSyncPeriodSeconds,
+  getWorkflowBooleanPref,
+  getWorkflowStringPref,
+  normalizeWorkflowNoteLinkPreviewType,
+  WORKFLOW_ABOUT_LINKS,
+  WORKFLOW_BUILD_TIME,
+  WORKFLOW_DEFAULTS,
+  WORKFLOW_PLUGIN_NAME,
+  WORKFLOW_PLUGIN_VERSION,
+  WORKFLOW_PREF_KEYS,
+} from "./workflow";
 import {
   FIXED_MANAGED_FRONTMATTER_KEYS,
   getActiveMetadataPresetProfile,
@@ -85,6 +99,7 @@ import {
   OBSIDIAN_DASHBOARD_DIR_HINT_ID,
   OBSIDIAN_FILE_NAME_CONTEXT_ID,
   OBSIDIAN_FILE_NAME_PREVIEW_ID,
+  OBSIDIAN_FILE_NAME_RULE_ID,
   OBSIDIAN_NOTES_DIR_INPUT_ID,
   OBSIDIAN_NOTES_DIR_HINT_ID,
   OBSIDIAN_OPEN_AFTER_SYNC_INPUT_ID,
@@ -103,6 +118,21 @@ import {
   OBSIDIAN_VAULT_ROOT_HINT_ID,
   OBSIDIAN_VAULT_ROOT_INPUT_ID,
   OBSIDIAN_WATCH_FILES_INPUT_ID,
+  OBSIDIAN_WORKFLOW_ANNOTATION_TAG_SYNC_INPUT_ID,
+  OBSIDIAN_WORKFLOW_ATTACHMENT_FOLDER_INPUT_ID,
+  OBSIDIAN_WORKFLOW_EXPAND_LEVEL_INPUT_ID,
+  OBSIDIAN_WORKFLOW_EXPORT_NOTES_INPUT_ID,
+  OBSIDIAN_WORKFLOW_KEEP_LINKS_INPUT_ID,
+  OBSIDIAN_WORKFLOW_MAGIC_KEY_INPUT_ID,
+  OBSIDIAN_WORKFLOW_MAGIC_KEY_SHORTCUT_INPUT_ID,
+  OBSIDIAN_WORKFLOW_MARKDOWN_PASTE_INPUT_ID,
+  OBSIDIAN_WORKFLOW_NOTE_LINK_PREVIEW_CTRL_INPUT_ID,
+  OBSIDIAN_WORKFLOW_NOTE_LINK_PREVIEW_DISABLE_INPUT_ID,
+  OBSIDIAN_WORKFLOW_NOTE_LINK_PREVIEW_GROUP_NAME,
+  OBSIDIAN_WORKFLOW_NOTE_LINK_PREVIEW_HOVER_INPUT_ID,
+  OBSIDIAN_WORKFLOW_PIN_LEFT_INPUT_ID,
+  OBSIDIAN_WORKFLOW_PIN_TOP_INPUT_ID,
+  OBSIDIAN_WORKFLOW_SYNC_PERIOD_INPUT_ID,
 } from "./uiIds";
 import {
   createPrefHTMLElement,
@@ -117,6 +147,10 @@ import {
   uiText,
 } from "./helpers";
 import { metadataPresetEditorState } from "./state";
+
+const FILE_NAME_TEMPLATE_TOKEN_LABELS = MANAGED_FILE_NAME_TEMPLATE_TOKENS.map(
+  (token) => `{{${token}}}`,
+).join(" ");
 
 export function renderObsidianItemTemplateSelection() {
   const templateDisplay = getPrefElement<HTMLInputElement>(
@@ -166,8 +200,8 @@ const OBSIDIAN_TOOLTIP_TEXT: Record<string, { zh: string; en: string }> = {
     en: "This section controls templates, generated content, child-note rules, and frontmatter fields.",
   },
   "file-name-template": {
-    zh: "可用变量：{{title}} {{year}} {{firstCreator}} {{citationKey}} {{publication}} {{itemType}}",
-    en: "Available tokens: {{title}} {{year}} {{firstCreator}} {{citationKey}} {{publication}} {{itemType}}",
+    zh: `可用变量：${FILE_NAME_TEMPLATE_TOKEN_LABELS}`,
+    en: `Available tokens: ${FILE_NAME_TEMPLATE_TOKEN_LABELS}`,
   },
   "item-template": {
     zh: "这里只显示 [Item] 模板。它决定正文结构，不决定 frontmatter 字段。",
@@ -451,7 +485,9 @@ export function renderObsidianFrontmatterSummaryCard() {
 }
 
 export function renderObsidianMetadataSummaryCard() {
-  const summary = getPrefElement<HTMLElement>(OBSIDIAN_METADATA_PRESET_SUMMARY_ID);
+  const summary = getPrefElement<HTMLElement>(
+    OBSIDIAN_METADATA_PRESET_SUMMARY_ID,
+  );
   if (!summary) {
     return;
   }
@@ -469,8 +505,10 @@ export function renderObsidianMetadataSummaryCard() {
   const overrideCount = Object.keys(activeProfile.preset.visible)
     .concat(Object.keys(activeProfile.preset.hidden))
     .filter((sectionKey) => sectionKey !== "default")
-    .reduce((sections, sectionKey) => sections.add(sectionKey), new Set<string>())
-    .size;
+    .reduce(
+      (sections, sectionKey) => sections.add(sectionKey),
+      new Set<string>(),
+    ).size;
   summary.textContent = uiText(
     `预设：${activeProfile.name} · 栏目：${getMetadataPresetSectionLabel(
       currentSection,
@@ -503,6 +541,10 @@ export function ensureObsidianPrefsStyle(prefDoc: Document) {
 export function getObsidianSettingsShellMarkup(prefDoc: Document) {
   const { appPath, vaultRoot, notesDir, assetsDir, dashboardDir } =
     getObsidianResolvedPaths();
+  const workflowAboutMeta = uiText(
+    `${WORKFLOW_PLUGIN_NAME} ${WORKFLOW_PLUGIN_VERSION} · 构建于 ${WORKFLOW_BUILD_TIME}`,
+    `${WORKFLOW_PLUGIN_NAME} ${WORKFLOW_PLUGIN_VERSION} · Built ${WORKFLOW_BUILD_TIME}`,
+  );
   return buildObsidianSettingsShellHTML({
     escapeHTML: (value: string) => escapePrefHTML(prefDoc, value),
     getString,
@@ -533,6 +575,55 @@ export function getObsidianSettingsShellMarkup(prefDoc: Document) {
       OBSIDIAN_DASHBOARD_AUTO_SETUP_PREF,
       true,
     ),
+    workflowConfig: {
+      exportNotesTakeover: getWorkflowBooleanPref(
+        getPref(WORKFLOW_PREF_KEYS.exportNotesTakeover),
+        WORKFLOW_DEFAULTS.exportNotesTakeover,
+      ),
+      outlineExpandLevel: clampWorkflowOutlineExpandLevel(
+        getPref(WORKFLOW_PREF_KEYS.outlineExpandLevel),
+      ),
+      keepOutlineLinks: getWorkflowBooleanPref(
+        getPref(WORKFLOW_PREF_KEYS.keepOutlineLinks),
+        WORKFLOW_DEFAULTS.keepOutlineLinks,
+      ),
+      noteLinkPreviewType: normalizeWorkflowNoteLinkPreviewType(
+        getPref(WORKFLOW_PREF_KEYS.noteLinkPreviewType),
+      ),
+      useMagicKey: getWorkflowBooleanPref(
+        getPref(WORKFLOW_PREF_KEYS.useMagicKey),
+        WORKFLOW_DEFAULTS.useMagicKey,
+      ),
+      useMagicKeyShortcut: getWorkflowBooleanPref(
+        getPref(WORKFLOW_PREF_KEYS.useMagicKeyShortcut),
+        WORKFLOW_DEFAULTS.useMagicKeyShortcut,
+      ),
+      useMarkdownPaste: getWorkflowBooleanPref(
+        getPref(WORKFLOW_PREF_KEYS.useMarkdownPaste),
+        WORKFLOW_DEFAULTS.useMarkdownPaste,
+      ),
+      pinTableLeft: getWorkflowBooleanPref(
+        getPref(WORKFLOW_PREF_KEYS.pinTableLeft),
+        WORKFLOW_DEFAULTS.pinTableLeft,
+      ),
+      pinTableTop: getWorkflowBooleanPref(
+        getPref(WORKFLOW_PREF_KEYS.pinTableTop),
+        WORKFLOW_DEFAULTS.pinTableTop,
+      ),
+      syncPeriodSeconds: clampWorkflowSyncPeriodSeconds(
+        getPref(WORKFLOW_PREF_KEYS.syncPeriodSeconds),
+      ),
+      syncAttachmentFolder: getWorkflowStringPref(
+        getPref(WORKFLOW_PREF_KEYS.syncAttachmentFolder),
+        WORKFLOW_DEFAULTS.syncAttachmentFolder,
+      ),
+      annotationTagSync: getWorkflowBooleanPref(
+        getPref(WORKFLOW_PREF_KEYS.annotationTagSync),
+        WORKFLOW_DEFAULTS.annotationTagSync,
+      ),
+      aboutLinks: WORKFLOW_ABOUT_LINKS,
+      aboutMeta: workflowAboutMeta,
+    },
     ids: {
       connectionStatusId: OBSIDIAN_CONNECTION_STATUS_ID,
       appPathInputId: OBSIDIAN_APP_PATH_INPUT_ID,
@@ -547,6 +638,7 @@ export function getObsidianSettingsShellMarkup(prefDoc: Document) {
       dashboardDirHintId: OBSIDIAN_DASHBOARD_DIR_HINT_ID,
       dashboardDirInputId: OBSIDIAN_DASHBOARD_DIR_INPUT_ID,
       fileNameTemplateInputId: OBSIDIAN_FILE_NAME_TEMPLATE_INPUT_ID,
+      fileNameRuleId: OBSIDIAN_FILE_NAME_RULE_ID,
       fileNamePreviewId: OBSIDIAN_FILE_NAME_PREVIEW_ID,
       fileNameContextId: OBSIDIAN_FILE_NAME_CONTEXT_ID,
       previewTriggerId: OBSIDIAN_PREVIEW_TRIGGER_ID,
@@ -588,6 +680,29 @@ export function getObsidianSettingsShellMarkup(prefDoc: Document) {
       childNotePromptSelectInputId: OBSIDIAN_CHILD_NOTE_PROMPT_SELECT_INPUT_ID,
       childNoteTagsInputId: OBSIDIAN_CHILD_NOTE_TAGS_INPUT_ID,
       dashboardAutoSetupInputId: OBSIDIAN_DASHBOARD_AUTO_SETUP_INPUT_ID,
+      workflowExportNotesInputId: OBSIDIAN_WORKFLOW_EXPORT_NOTES_INPUT_ID,
+      workflowExpandLevelInputId: OBSIDIAN_WORKFLOW_EXPAND_LEVEL_INPUT_ID,
+      workflowKeepLinksInputId: OBSIDIAN_WORKFLOW_KEEP_LINKS_INPUT_ID,
+      workflowNoteLinkPreviewGroupName:
+        OBSIDIAN_WORKFLOW_NOTE_LINK_PREVIEW_GROUP_NAME,
+      workflowNoteLinkPreviewHoverInputId:
+        OBSIDIAN_WORKFLOW_NOTE_LINK_PREVIEW_HOVER_INPUT_ID,
+      workflowNoteLinkPreviewCtrlInputId:
+        OBSIDIAN_WORKFLOW_NOTE_LINK_PREVIEW_CTRL_INPUT_ID,
+      workflowNoteLinkPreviewDisableInputId:
+        OBSIDIAN_WORKFLOW_NOTE_LINK_PREVIEW_DISABLE_INPUT_ID,
+      workflowMagicKeyInputId: OBSIDIAN_WORKFLOW_MAGIC_KEY_INPUT_ID,
+      workflowMagicKeyShortcutInputId:
+        OBSIDIAN_WORKFLOW_MAGIC_KEY_SHORTCUT_INPUT_ID,
+      workflowMarkdownPasteInputId:
+        OBSIDIAN_WORKFLOW_MARKDOWN_PASTE_INPUT_ID,
+      workflowPinLeftInputId: OBSIDIAN_WORKFLOW_PIN_LEFT_INPUT_ID,
+      workflowPinTopInputId: OBSIDIAN_WORKFLOW_PIN_TOP_INPUT_ID,
+      workflowSyncPeriodInputId: OBSIDIAN_WORKFLOW_SYNC_PERIOD_INPUT_ID,
+      workflowAttachmentFolderInputId:
+        OBSIDIAN_WORKFLOW_ATTACHMENT_FOLDER_INPUT_ID,
+      workflowAnnotationTagSyncInputId:
+        OBSIDIAN_WORKFLOW_ANNOTATION_TAG_SYNC_INPUT_ID,
     },
     groupNames: {
       updateStrategy: OBSIDIAN_UPDATE_STRATEGY_GROUP_NAME,

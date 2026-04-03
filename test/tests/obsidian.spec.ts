@@ -5,17 +5,26 @@ import {
   parseMarkdownFrontmatter,
 } from "../../src/modules/obsidian/frontmatter";
 import {
+  DEFAULT_OBSIDIAN_FILE_NAME_TEMPLATE,
   DEFAULT_MANAGED_FRONTMATTER_FIELDS,
   setManagedFrontmatterFields,
 } from "../../src/modules/obsidian/settings";
+import {
+  LEGACY_OBSIDIAN_FILE_NAME_TEMPLATE,
+  migrateObsidianFileNameTemplatePref,
+} from "../../src/modules/obsidian/fileNameTemplate";
+import { getManagedFileNamePattern } from "../../src/modules/obsidian/paths";
+import { getPref, setPref } from "../../src/utils/prefs";
 
 describe("Obsidian helpers", function () {
   this.beforeEach(function () {
     setManagedFrontmatterFields(DEFAULT_MANAGED_FRONTMATTER_FIELDS);
+    setPref("obsidian.fileNameTemplate", DEFAULT_OBSIDIAN_FILE_NAME_TEMPLATE);
   });
 
   this.afterEach(function () {
     setManagedFrontmatterFields(DEFAULT_MANAGED_FRONTMATTER_FIELDS);
+    setPref("obsidian.fileNameTemplate", DEFAULT_OBSIDIAN_FILE_NAME_TEMPLATE);
   });
 
   it("normalizeFrontmatterList preserves indexed object order", function () {
@@ -115,5 +124,26 @@ status: [invalid
 
     assert.notProperty(merged, "aliases");
     assert.sameMembers(merged.tags, ["literature", "zotero", "project-x"]);
+  });
+
+  it("migrates only the legacy filename default to the uniqueKey template", function () {
+    setPref("obsidian.fileNameTemplate", LEGACY_OBSIDIAN_FILE_NAME_TEMPLATE);
+    assert.equal(
+      getManagedFileNamePattern(),
+      DEFAULT_OBSIDIAN_FILE_NAME_TEMPLATE,
+    );
+    migrateObsidianFileNameTemplatePref();
+    assert.equal(
+      String(getPref("obsidian.fileNameTemplate") || ""),
+      DEFAULT_OBSIDIAN_FILE_NAME_TEMPLATE,
+    );
+
+    const customTemplate = "{{title}} - {{year}} - {{key}}";
+    setPref("obsidian.fileNameTemplate", customTemplate);
+    migrateObsidianFileNameTemplatePref();
+    assert.equal(
+      String(getPref("obsidian.fileNameTemplate") || ""),
+      customTemplate,
+    );
   });
 });

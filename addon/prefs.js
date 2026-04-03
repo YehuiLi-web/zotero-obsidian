@@ -13,7 +13,7 @@ pref(
   "__prefsPrefix__.obsidian.itemTemplate",
   "[Item] Obsidian Literature Workbench",
 );
-pref("__prefsPrefix__.obsidian.fileNameTemplate", "{{title}} - {{year}}");
+pref("__prefsPrefix__.obsidian.fileNameTemplate", "{{title}} -- {{uniqueKey}}");
 pref("__prefsPrefix__.obsidian.syncScope", "selection");
 pref("__prefsPrefix__.obsidian.updateStrategy", "managed");
 pref(

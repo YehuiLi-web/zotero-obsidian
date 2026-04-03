@@ -25,8 +25,12 @@ type PrefsEventPayload = {
 
 const refreshQueue = new Set<string>();
 let flushingRefreshQueue = false;
+let preferencesPaneRegistered = false;
 
 export function registerPreferencesPane() {
+  if (preferencesPaneRegistered) {
+    return;
+  }
   Zotero.PreferencePanes.register({
     pluginID: config.addonID,
     src: rootURI + "chrome/content/preferences.xhtml",
@@ -34,6 +38,7 @@ export function registerPreferencesPane() {
     label: getString("pref-title"),
     image: `chrome://${config.addonRef}/content/icons/favicon.png`,
   });
+  preferencesPaneRegistered = true;
 }
 
 export function handlePrefsEvent(

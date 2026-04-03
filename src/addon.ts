@@ -5,6 +5,7 @@ import {
   SyncDataType,
   SyncHistoryDataType,
 } from "./modules/sync/managerWindow";
+import type { TemplateStore } from "./modules/template/store";
 import hooks from "./hooks";
 import api from "./api";
 import { createZToolkit } from "./utils/ztoolkit";
@@ -82,7 +83,7 @@ class Addon {
       };
     };
     template: {
-      data?: LargePrefHelper;
+      data?: TemplateStore;
       editor: {
         window?: Window;
         tableHelper?: VirtualizedTableHelper;

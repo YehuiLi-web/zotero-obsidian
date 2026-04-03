@@ -4,23 +4,9 @@ import type {
   PreferenceSection,
   PreferenceSectionContext,
 } from "./types";
-import { basicSection } from "./basic";
-import { editorSection } from "./editor";
-import { syncSection } from "./sync";
-import { templateSection } from "./template";
-import { annotationSection } from "./annotation";
-import { aboutSection } from "./about";
 import { obsidianSection } from "./obsidian/section";
 
-const registeredSections: PreferenceSection[] = [
-  basicSection,
-  editorSection,
-  syncSection,
-  templateSection,
-  annotationSection,
-  aboutSection,
-  obsidianSection,
-];
+const registeredSections: PreferenceSection[] = [obsidianSection];
 
 export function getRegisteredSections(): PreferenceSection[] {
   return registeredSections;

@@ -1,4 +1,4 @@
-pref-title=Better Notes
+pref-title=Obsidian Bridge for Zotero
 
 close-shortcut =
     .key = w

@@ -1,20 +1,36 @@
-import { clearContainer, createHtmlElement } from "../helpers";
+import {
+  bugs,
+  config,
+  homepage,
+  repository,
+  version,
+} from "../../../../../package.json";
+import { clearContainer, createHtmlElement, createL10nSpan } from "../helpers";
 import type { PreferenceSection } from "../types";
+
+declare const __BUILD_TIME__: string;
+const ABOUT_BUILD_TIME =
+  typeof __BUILD_TIME__ === "string" ? __BUILD_TIME__ : "development";
+
+const REPOSITORY_URL = String(homepage || bugs?.url || repository?.url || "")
+  .replace(/^git\+/, "")
+  .replace(/\.git$/, "")
+  .replace(/#.*$/, "");
 
 const LINKS = [
   {
-    href: "https://github.com/windingwind/zotero-better-notes",
+    href: REPOSITORY_URL,
     label: "Homepage - GitHub",
   },
   {
-    href: "https://github.com/windingwind/zotero-better-notes/issues",
+    href: String(bugs?.url || `${REPOSITORY_URL}/issues`),
     label: "Bug Report, Feature Request",
   },
   {
-    href: "https://github.com/windingwind/zotero-better-notes/discussions/categories/q-a",
+    href: `${REPOSITORY_URL}/discussions/categories/q-a`,
     label: "Q&A",
   },
-];
+].filter((link) => Boolean(link.href));
 
 export const aboutSection: PreferenceSection = {
   id: "about",
@@ -40,16 +56,16 @@ export const aboutSection: PreferenceSection = {
     });
     container.appendChild(linkRow);
 
-    const helpLabel = createHtmlElement(document, "label");
-    helpLabel.setAttribute("data-l10n-id", "help");
-    helpLabel.setAttribute(
-      "data-l10n-args",
-      JSON.stringify({
-        time: "__buildTime__",
-        name: "__addonName__",
-        version: "__buildVersion__",
-      }),
+    container.appendChild(
+      createL10nSpan(
+        document,
+        "help",
+        JSON.stringify({
+          time: ABOUT_BUILD_TIME,
+          name: config.addonName,
+          version,
+        }),
+      ),
     );
-    container.appendChild(helpLabel);
   },
 };

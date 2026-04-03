@@ -1,6 +1,11 @@
 /* eslint-disable no-useless-escape */
 /* eslint-disable no-irregular-whitespace */
 import { ClipboardHelper } from "zotero-plugin-toolkit";
+import { config } from "../../package.json";
+import {
+  TEMPLATE_PREFS,
+  TEMPLATE_VALUE_CHUNK_SIZE,
+} from "../../src/modules/template/store";
 import { getAddon } from "../utils/global";
 import { resetAll } from "../utils/status";
 import { getNoteContent, parseTemplateString } from "../utils/note";
@@ -74,6 +79,59 @@ describe("Template", function () {
       "<p>second</p>",
     );
     addon.api.template.removeTemplate("[Item]Collision Template");
+  });
+
+  it("api.template stores large template bodies in chunked prefs", async function () {
+    const key = "[Item]Chunked Template";
+    const text = "Chunked template body\n".repeat(500);
+    addon.api.template.setTemplate({ name: key, text });
+
+    assert.equal(addon.api.template.getTemplateText(key), text);
+    assert.isUndefined(
+      Zotero.Prefs.get(`${config.prefsPrefix}.template.${key}`, true),
+    );
+
+    const chunkCount = Number(
+      Zotero.Prefs.get(`${TEMPLATE_PREFS.chunkCountPrefix}${key}`, true) || 0,
+    );
+    assert.isAbove(chunkCount, 1);
+    for (let index = 0; index < chunkCount; index += 1) {
+      const chunk = String(
+        Zotero.Prefs.get(`${TEMPLATE_PREFS.chunkValuePrefix}${key}.${index}`, true) ||
+          "",
+      );
+      assert.isAtMost(chunk.length, TEMPLATE_VALUE_CHUNK_SIZE);
+    }
+
+    addon.api.template.removeTemplate(key);
+  });
+
+  it("api.template migrates legacy single-pref values into chunked prefs", async function () {
+    const key = "[Item]Legacy Chunk Migration";
+    const text = "Legacy template body\n".repeat(450);
+    Zotero.Prefs.set(
+      `${config.prefsPrefix}.templateKeys`,
+      JSON.stringify([key]),
+      true,
+    );
+    Zotero.Prefs.set(
+      `${config.prefsPrefix}.template.${key}`,
+      JSON.stringify(text),
+      true,
+    );
+
+    assert.equal(addon.api.template.getTemplateText(key), text);
+    assert.isUndefined(
+      Zotero.Prefs.get(`${config.prefsPrefix}.template.${key}`, true),
+    );
+    assert.isAbove(
+      Number(
+        Zotero.Prefs.get(`${TEMPLATE_PREFS.chunkCountPrefix}${key}`, true) || 0,
+      ),
+      1,
+    );
+
+    addon.api.template.removeTemplate(key);
   });
 
   it("api.template.renderTemplatePreview", async function () {

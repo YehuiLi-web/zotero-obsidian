@@ -31,6 +31,25 @@ type ObsidianPrefsLayoutContext = {
   childNoteTags: string;
   childNotePrompt: boolean;
   dashboardAutoSetup: boolean;
+  workflowConfig: {
+    exportNotesTakeover: boolean;
+    outlineExpandLevel: number;
+    keepOutlineLinks: boolean;
+    noteLinkPreviewType: "hover" | "ctrl" | "disable";
+    useMagicKey: boolean;
+    useMagicKeyShortcut: boolean;
+    useMarkdownPaste: boolean;
+    pinTableLeft: boolean;
+    pinTableTop: boolean;
+    syncPeriodSeconds: number;
+    syncAttachmentFolder: string;
+    annotationTagSync: boolean;
+    aboutLinks: Array<{
+      label: string;
+      href: string;
+    }>;
+    aboutMeta: string;
+  };
   ids: {
     connectionStatusId: string;
     appPathInputId: string;
@@ -45,6 +64,7 @@ type ObsidianPrefsLayoutContext = {
     dashboardDirHintId: string;
     dashboardDirInputId: string;
     fileNameTemplateInputId: string;
+    fileNameRuleId: string;
     fileNamePreviewId: string;
     fileNameContextId: string;
     previewTriggerId: string;
@@ -83,6 +103,21 @@ type ObsidianPrefsLayoutContext = {
     childNotePromptSelectInputId: string;
     childNoteTagsInputId: string;
     dashboardAutoSetupInputId: string;
+    workflowExportNotesInputId: string;
+    workflowExpandLevelInputId: string;
+    workflowKeepLinksInputId: string;
+    workflowNoteLinkPreviewGroupName: string;
+    workflowNoteLinkPreviewHoverInputId: string;
+    workflowNoteLinkPreviewCtrlInputId: string;
+    workflowNoteLinkPreviewDisableInputId: string;
+    workflowMagicKeyInputId: string;
+    workflowMagicKeyShortcutInputId: string;
+    workflowMarkdownPasteInputId: string;
+    workflowPinLeftInputId: string;
+    workflowPinTopInputId: string;
+    workflowSyncPeriodInputId: string;
+    workflowAttachmentFolderInputId: string;
+    workflowAnnotationTagSyncInputId: string;
   };
   groupNames: {
     updateStrategy: string;
@@ -104,16 +139,23 @@ function renderButtonHTML(
     label: string;
     action?: string;
     id?: string;
+    variant?: "default" | "link";
+    url?: string;
   },
 ) {
   const esc = context.escapeHTML;
   const attrs = [
     options.id ? `id="${esc(options.id)}"` : "",
     options.action ? `data-ob-action="${esc(options.action)}"` : "",
+    options.url ? `data-ob-open-url="${esc(options.url)}"` : "",
   ]
     .filter(Boolean)
     .join(" ");
-  return `<button type="button" class="ob-bridge-button" ${attrs}>${esc(
+  const className =
+    options.variant === "link"
+      ? "ob-bridge-button ob-bridge-button--link"
+      : "ob-bridge-button";
+  return `<button type="button" class="${className}" ${attrs}>${esc(
     options.label,
   )}</button>`;
 }
@@ -161,18 +203,24 @@ function renderInputHTML(
   options: {
     id: string;
     value: string;
+    type?: "text" | "number";
     readOnly?: boolean;
     placeholder?: string;
+    min?: string;
+    max?: string;
+    step?: string;
   },
 ) {
   const esc = context.escapeHTML;
   const attrs = [
     `id="${esc(options.id)}"`,
+    `type="${esc(options.type || "text")}"`,
     `value="${esc(options.value)}"`,
     options.readOnly ? `readonly="readonly"` : "",
-    options.placeholder
-      ? `placeholder="${esc(options.placeholder)}"`
-      : "",
+    options.placeholder ? `placeholder="${esc(options.placeholder)}"` : "",
+    options.min ? `min="${esc(options.min)}"` : "",
+    options.max ? `max="${esc(options.max)}"` : "",
+    options.step ? `step="${esc(options.step)}"` : "",
   ]
     .filter(Boolean)
     .join(" ");
@@ -226,7 +274,13 @@ function renderFormRowHTML(
 function renderSectionHTML(
   context: ObsidianPrefsLayoutContext,
   options: {
-    panel: "connection" | "noteDesign" | "sync" | "tools";
+    panel:
+      | "connection"
+      | "workflow"
+      | "noteDesign"
+      | "sync"
+      | "tools"
+      | "about";
     title: string;
     bodyHTML: string;
   },
@@ -238,6 +292,30 @@ function renderSectionHTML(
     )}">
       <h3 class="ob-bridge-section__title">${esc(options.title)}</h3>
       ${options.bodyHTML}
+    </section>
+  `;
+}
+
+function renderCardHTML(
+  context: ObsidianPrefsLayoutContext,
+  options: {
+    title: string;
+    bodyHTML: string;
+    description?: string;
+  },
+) {
+  const esc = context.escapeHTML;
+  return `
+    <section class="ob-bridge-card">
+      <div class="ob-bridge-card__title">${esc(options.title)}</div>
+      ${
+        options.description
+          ? `<div class="ob-bridge-card__description">${esc(
+              options.description,
+            )}</div>`
+          : ""
+      }
+      <div class="ob-bridge-card__body">${options.bodyHTML}</div>
     </section>
   `;
 }
@@ -342,19 +420,229 @@ function buildObsidianConnectionPanelHTML(context: ObsidianPrefsLayoutContext) {
   });
 }
 
-function buildObsidianNoteDesignPanelHTML(
-  context: ObsidianPrefsLayoutContext,
-) {
+function buildObsidianWorkflowPanelHTML(context: ObsidianPrefsLayoutContext) {
+  const { ids, workflowConfig } = context;
+  const noteLinkPreviewChoices = renderChoiceGroupHTML(context, [
+    renderChoiceLineHTML(context, {
+      inputType: "radio",
+      inputId: ids.workflowNoteLinkPreviewHoverInputId,
+      name: ids.workflowNoteLinkPreviewGroupName,
+      value: "hover",
+      checked: workflowConfig.noteLinkPreviewType === "hover",
+      title: context.uiText("鼠标悬停", "Hover"),
+    }),
+    renderChoiceLineHTML(context, {
+      inputType: "radio",
+      inputId: ids.workflowNoteLinkPreviewCtrlInputId,
+      name: ids.workflowNoteLinkPreviewGroupName,
+      value: "ctrl",
+      checked: workflowConfig.noteLinkPreviewType === "ctrl",
+      title: context.uiText("按下 Ctrl", "Hold Ctrl"),
+    }),
+    renderChoiceLineHTML(context, {
+      inputType: "radio",
+      inputId: ids.workflowNoteLinkPreviewDisableInputId,
+      name: ids.workflowNoteLinkPreviewGroupName,
+      value: "disable",
+      checked: workflowConfig.noteLinkPreviewType === "disable",
+      title: context.uiText("从不", "Never"),
+    }),
+  ]);
+  return renderSectionHTML(context, {
+    panel: "workflow",
+    title: context.uiText("Better Note 设置", "Better Note Settings"),
+    bodyHTML: `
+      <div class="ob-bridge-cardStack">
+        ${renderCardHTML(context, {
+          title: context.uiText("基本", "Basic"),
+          bodyHTML: renderChoiceLineHTML(context, {
+            inputType: "checkbox",
+            inputId: ids.workflowExportNotesInputId,
+            checked: workflowConfig.exportNotesTakeover,
+            title: context.uiText("接管导出笔记", "Take Over Exported Notes"),
+          }),
+        })}
+        ${renderCardHTML(context, {
+          title: context.uiText("笔记编辑器", "Note Editor"),
+          description: context.uiText(
+            "大纲层级和链接预览方式在重启 Zotero 后会完全生效。",
+            "Outline depth and link preview mode fully apply after restarting Zotero.",
+          ),
+          bodyHTML: `
+            ${renderFormRowHTML(context, {
+              label: context.uiText("大纲展开至标题层级", "Outline Expand Level"),
+              forId: ids.workflowExpandLevelInputId,
+              controlHTML: renderInputHTML(context, {
+                id: ids.workflowExpandLevelInputId,
+                type: "number",
+                value: String(workflowConfig.outlineExpandLevel),
+                min: "1",
+                max: "6",
+                step: "1",
+              }),
+              className: "ob-bridge-rowBlock--wideLabel",
+            })}
+            ${renderChoiceLineHTML(context, {
+              inputType: "checkbox",
+              inputId: ids.workflowKeepLinksInputId,
+              checked: workflowConfig.keepOutlineLinks,
+              title: context.uiText(
+                "在大纲中显示笔记链接",
+                "Show Note Links in Outline",
+              ),
+            })}
+            ${renderFormRowHTML(context, {
+              label: context.uiText(
+                "笔记链接预览触发方式",
+                "Note Link Preview Trigger",
+              ),
+              controlHTML: noteLinkPreviewChoices,
+              className: "ob-bridge-rowBlock--wideLabel",
+            })}
+            <div class="ob-bridge-choiceGroup ob-bridge-choiceGroup--grid">
+              ${renderChoiceLineHTML(context, {
+                inputType: "checkbox",
+                inputId: ids.workflowMagicKeyInputId,
+                checked: workflowConfig.useMagicKey,
+                title: context.uiText(
+                  '使用魔法键 "/" 显示命令面板',
+                  'Use Magic Key "/" for the Command Palette',
+                ),
+              })}
+              ${renderChoiceLineHTML(context, {
+                inputType: "checkbox",
+                inputId: ids.workflowMagicKeyShortcutInputId,
+                checked: workflowConfig.useMagicKeyShortcut,
+                title: context.uiText(
+                  '使用 Ctrl + "/" 显示命令面板',
+                  'Use Ctrl + "/" for the Command Palette',
+                ),
+              })}
+              ${renderChoiceLineHTML(context, {
+                inputType: "checkbox",
+                inputId: ids.workflowMarkdownPasteInputId,
+                checked: workflowConfig.useMarkdownPaste,
+                title: context.uiText(
+                  "使用增强的 Markdown 粘贴",
+                  "Use Enhanced Markdown Paste",
+                ),
+              })}
+            </div>
+            ${renderFormRowHTML(context, {
+              label: context.uiText(
+                "鼠标滚动时固定表格的",
+                "Keep Table Frozen While Scrolling",
+              ),
+              controlHTML: renderChoiceGroupHTML(context, [
+                renderChoiceLineHTML(context, {
+                  inputType: "checkbox",
+                  inputId: ids.workflowPinLeftInputId,
+                  checked: workflowConfig.pinTableLeft,
+                  title: context.uiText("首列", "First Column"),
+                }),
+                renderChoiceLineHTML(context, {
+                  inputType: "checkbox",
+                  inputId: ids.workflowPinTopInputId,
+                  checked: workflowConfig.pinTableTop,
+                  title: context.uiText("首行", "Header Row"),
+                }),
+              ]),
+              className: "ob-bridge-rowBlock--wideLabel",
+            })}
+          `,
+        })}
+        ${renderCardHTML(context, {
+          title: context.uiText("同步", "Sync"),
+          description: context.uiText(
+            "自动同步周期调整后建议重启 Zotero。",
+            "Restarting Zotero is recommended after changing the auto-sync interval.",
+          ),
+          bodyHTML: `
+            ${renderFormRowHTML(context, {
+              label: context.uiText("自动同步周期（秒）", "Auto Sync Interval (sec)"),
+              forId: ids.workflowSyncPeriodInputId,
+              controlHTML: renderInputHTML(context, {
+                id: ids.workflowSyncPeriodInputId,
+                type: "number",
+                value: String(workflowConfig.syncPeriodSeconds),
+                min: "-1",
+                max: "3600",
+                step: "1",
+              }),
+              className: "ob-bridge-rowBlock--wideLabel",
+            })}
+            ${renderFormRowHTML(context, {
+              label: context.uiText("附件文件夹", "Attachment Folder"),
+              forId: ids.workflowAttachmentFolderInputId,
+              controlHTML: renderInputHTML(context, {
+                id: ids.workflowAttachmentFolderInputId,
+                value: workflowConfig.syncAttachmentFolder,
+              }),
+            })}
+            <div class="ob-bridge-actions">
+              ${renderButtonHTML(context, {
+                action: "open-sync-manager",
+                label: context.uiText("打开同步管理器", "Open Sync Manager"),
+              })}
+            </div>
+          `,
+        })}
+        ${renderCardHTML(context, {
+          title: context.uiText("模板", "Template"),
+          bodyHTML: `
+            <div class="ob-bridge-actions">
+              ${renderButtonHTML(context, {
+                action: "open-template-editor",
+                label: context.uiText("打开模板编辑器", "Open Template Editor"),
+              })}
+            </div>
+          `,
+        })}
+        ${renderCardHTML(context, {
+          title: context.uiText("从注释生成笔记", "Notes From Annotations"),
+          bodyHTML: renderChoiceLineHTML(context, {
+            inputType: "checkbox",
+            inputId: ids.workflowAnnotationTagSyncInputId,
+            checked: workflowConfig.annotationTagSync,
+            title: context.uiText(
+              "保持注释生成的笔记标签与原始注释同步",
+              "Keep Annotation Note Tags Synced with Source Annotations",
+            ),
+          }),
+        })}
+      </div>
+    `,
+  });
+}
+
+function buildObsidianNoteDesignPanelHTML(context: ObsidianPrefsLayoutContext) {
   const { ids, contentConfig, translationConfig } = context;
   return renderSectionHTML(context, {
     panel: "noteDesign",
     title: context.uiText("笔记", "Notes"),
     bodyHTML: `
-      <input
-        id="${context.escapeHTML(ids.fileNameTemplateInputId)}"
-        type="hidden"
-        value="${context.escapeHTML(context.fileNameTemplate)}"
-      />
+      ${renderFormRowHTML(context, {
+        label: context.uiText("命名模板", "Filename Template"),
+        forId: ids.fileNameTemplateInputId,
+        controlHTML: renderInputHTML(context, {
+          id: ids.fileNameTemplateInputId,
+          value: context.fileNameTemplate,
+          placeholder: "{{title}} -- {{uniqueKey}}",
+        }),
+        hintText: context.uiText(
+          "支持模板变量；悬停“当前规则”可查看可用字段。",
+          "Template tokens are supported; hover the current rule to see available fields.",
+        ),
+      })}
+
+      <div class="ob-bridge-inline-summary">
+        <span>${context.escapeHTML(context.uiText("命名规则", "Naming Rule"))}</span>
+        <span> · </span>
+        <span
+          id="${context.escapeHTML(ids.fileNameRuleId)}"
+          data-ob-tooltip="file-name-template"
+        ></span>
+      </div>
 
       ${renderFormRowHTML(context, {
         label: context.uiText("模板", "Template"),
@@ -463,7 +751,10 @@ function buildObsidianNoteDesignPanelHTML(
         <div class="ob-bridge-actions">
           ${renderButtonHTML(context, {
             action: "open-field-studio-frontmatter",
-            label: context.uiText("打开属性输出工作台", "Open Property Output Studio"),
+            label: context.uiText(
+              "打开属性输出工作台",
+              "Open Property Output Studio",
+            ),
           })}
         </div>
       </details>
@@ -478,7 +769,10 @@ function buildObsidianNoteDesignPanelHTML(
         <div class="ob-bridge-actions">
           ${renderButtonHTML(context, {
             action: "open-field-studio-metadata",
-            label: context.uiText("打开字段分流工作台", "Open Field Routing Studio"),
+            label: context.uiText(
+              "打开字段分流工作台",
+              "Open Field Routing Studio",
+            ),
           })}
         </div>
       </details>
@@ -597,13 +891,13 @@ function buildObsidianSyncPanelHTML(context: ObsidianPrefsLayoutContext) {
             inputType: "checkbox",
             inputId: ids.openAfterSyncInputId,
             checked: context.openAfterSync,
-            title: context.uiText("同步后打开 Obsidian", "Open After Sync"),
+            title: context.uiText("同步后在 Ob 打开", "Open in Obsidian"),
           }),
           renderChoiceLineHTML(context, {
             inputType: "checkbox",
             inputId: ids.revealAfterSyncInputId,
             checked: context.revealAfterSync,
-            title: context.uiText("同步后定位文件", "Reveal File"),
+            title: context.uiText("同步后在文件夹显示", "Reveal in Folder"),
           }),
         ],
         "ob-bridge-choiceGroup--grid",
@@ -618,7 +912,10 @@ function buildObsidianSyncPanelHTML(context: ObsidianPrefsLayoutContext) {
             inputType: "checkbox",
             inputId: ids.translateMissingMetadataInputId,
             checked: translationConfig.enabled,
-            title: context.uiText("同步前补全缺失翻译", "Fill Missing Translations"),
+            title: context.uiText(
+              "同步前补全缺失翻译",
+              "Fill Missing Translations",
+            ),
           }),
         ])}
         <div data-ob-role="translation-options"${
@@ -707,6 +1004,35 @@ function buildObsidianToolsPanelHTML(context: ObsidianPrefsLayoutContext) {
   });
 }
 
+function buildObsidianAboutPanelHTML(context: ObsidianPrefsLayoutContext) {
+  const { workflowConfig } = context;
+  const aboutLinksHTML = workflowConfig.aboutLinks
+    .map((link, index) => {
+      const divider =
+        index < workflowConfig.aboutLinks.length - 1
+          ? `<span class="ob-bridge-linkDivider">|</span>`
+          : "";
+      return `${renderButtonHTML(context, {
+        label: link.label,
+        variant: "link",
+        url: link.href,
+      })}${divider}`;
+    })
+    .join("");
+  return renderSectionHTML(context, {
+    panel: "about",
+    title: context.uiText("关于", "About"),
+    bodyHTML: `
+      <div class="ob-bridge-aboutPanel">
+        <div class="ob-bridge-linkRow">${aboutLinksHTML}</div>
+        <div class="ob-bridge-inline ob-bridge-aboutPanel__meta">${context.escapeHTML(
+          workflowConfig.aboutMeta,
+        )}</div>
+      </div>
+    `,
+  });
+}
+
 function buildObsidianSettingsShellHTML(context: ObsidianPrefsLayoutContext) {
   return `
     <div class="ob-bridge-settings">
@@ -714,6 +1040,8 @@ function buildObsidianSettingsShellHTML(context: ObsidianPrefsLayoutContext) {
       ${buildObsidianNoteDesignPanelHTML(context)}
       ${buildObsidianSyncPanelHTML(context)}
       ${buildObsidianToolsPanelHTML(context)}
+      ${buildObsidianWorkflowPanelHTML(context)}
+      ${buildObsidianAboutPanelHTML(context)}
     </div>
   `;
 }

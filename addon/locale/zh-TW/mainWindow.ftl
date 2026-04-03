@@ -34,6 +34,3 @@ menuItem-syncSelectedToObsidian =
     .label = 同步文献到 Obsidian
 
 obsidian-open-failed = 无法打开该条目对应的 Obsidian 笔记，请尝试重新同步，或检查 Obsidian 设置。
-obsidian-sync-noSelection = 请先在文库中选中至少一篇文献条目。
-obsidian-sync-missingNotesDir = 请先在插件设置中配置 Obsidian 文献笔记目录。
-obsidian-sync-missingVaultRoot = 你配置的 Obsidian Vault 根目录不存在，请检查设置。

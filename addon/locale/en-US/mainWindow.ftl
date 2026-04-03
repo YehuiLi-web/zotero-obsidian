@@ -34,6 +34,3 @@ menuItem-syncSelectedToObsidian =
     .label = Sync Item to Obsidian
 
 obsidian-open-failed = Unable to open the mapped Obsidian note. Try syncing this item again or check the Obsidian settings.
-obsidian-sync-noSelection = Select at least one regular Zotero item first.
-obsidian-sync-missingNotesDir = Configure an Obsidian literature notes folder in plugin settings first.
-obsidian-sync-missingVaultRoot = The configured Obsidian vault root does not exist.

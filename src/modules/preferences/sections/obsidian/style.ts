@@ -27,10 +27,61 @@ function buildObsidianPrefsStyleText(
       font-weight: 700;
       line-height: 1.5;
     }
+    #${settingsRootId} .ob-bridge-cardStack {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    #${settingsRootId} .ob-bridge-card {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 12px 14px;
+      border: 1px solid var(--material-border, rgba(255, 255, 255, 0.18));
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.02);
+    }
+    #${settingsRootId} .ob-bridge-card__title {
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1.45;
+    }
+    #${settingsRootId} .ob-bridge-card__description {
+      color: var(--text-color-deemphasized);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+    #${settingsRootId} .ob-bridge-card__body {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding-block: 0;
+    }
+    #${settingsRootId} .ob-bridge-section[data-ob-panel="workflow"] .ob-bridge-cardStack {
+      gap: 12px;
+    }
+    #${settingsRootId} .ob-bridge-section[data-ob-panel="workflow"] .ob-bridge-card {
+      gap: 8px;
+      padding: 0;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+    }
+    #${settingsRootId} .ob-bridge-section[data-ob-panel="workflow"] .ob-bridge-card + .ob-bridge-card {
+      padding-top: 10px;
+      border-top: 1px solid var(--material-border, rgba(255, 255, 255, 0.18));
+    }
+    #${settingsRootId} .ob-bridge-section[data-ob-panel="workflow"] .ob-bridge-card__title {
+      font-size: 14px;
+      font-weight: 700;
+    }
     #${settingsRootId} .ob-bridge-rowBlock {
       display: flex;
       flex-direction: column;
       gap: 4px;
+    }
+    #${settingsRootId} .ob-bridge-rowBlock--wideLabel .ob-bridge-formRow {
+      grid-template-columns: 168px minmax(240px, 1fr) auto;
     }
     #${settingsRootId} .ob-bridge-formRow {
       display: grid;
@@ -61,11 +112,45 @@ function buildObsidianPrefsStyleText(
     #${settingsRootId} .ob-bridge-button {
       white-space: nowrap;
     }
+    #${settingsRootId} .ob-bridge-button--link {
+      padding: 0;
+      border: 0;
+      background: transparent;
+      color: var(--accent-blue, #6ca6ff);
+      text-decoration: underline;
+      cursor: pointer;
+    }
+    #${settingsRootId} .ob-bridge-button--link:hover {
+      opacity: 0.9;
+    }
     #${settingsRootId} .ob-bridge-actions {
       display: flex;
       flex-wrap: wrap;
       align-items: center;
       gap: 8px;
+    }
+    #${settingsRootId} .ob-bridge-linkRow {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+    }
+    #${settingsRootId} .ob-bridge-linkDivider {
+      color: var(--text-color-deemphasized);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+    #${settingsRootId} .ob-bridge-aboutPanel {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding-top: 2px;
+    }
+    #${settingsRootId} .ob-bridge-aboutPanel__meta {
+      opacity: 0.92;
+    }
+    #${settingsRootId} .ob-bridge-section[data-ob-panel="about"] .ob-bridge-linkRow {
+      gap: 6px 10px;
     }
     #${settingsRootId} .ob-bridge-choiceGroup {
       display: inline-flex;
@@ -78,6 +163,20 @@ function buildObsidianPrefsStyleText(
       grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
       gap: 8px 14px;
       align-items: start;
+    }
+    #${settingsRootId} .ob-bridge-section[data-ob-panel="sync"] .ob-bridge-choiceGroup--grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px 12px;
+    }
+    #${settingsRootId} .ob-bridge-section[data-ob-panel="sync"] .ob-bridge-choiceGroup--grid .ob-bridge-choiceLine {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      align-items: start;
+      gap: 4px 6px;
+      min-height: 24px;
+    }
+    #${settingsRootId} .ob-bridge-section[data-ob-panel="sync"] .ob-bridge-choiceGroup--grid .ob-bridge-choiceLine > input {
+      margin-top: 2px;
     }
     #${settingsRootId} .ob-bridge-choiceLine {
       display: inline-flex;
@@ -317,8 +416,19 @@ function buildObsidianPrefsStyleText(
       #${settingsRootId} .ob-bridge-metadataField {
         grid-template-columns: minmax(0, 1fr);
       }
+      #${settingsRootId} .ob-bridge-section[data-ob-panel="sync"] .ob-bridge-choiceGroup--grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
       #${settingsRootId} .ob-bridge-metadataField__toggle {
         justify-content: flex-start;
+      }
+      #${settingsRootId} .ob-bridge-aboutPanel {
+        gap: 4px;
+      }
+    }
+    @media (max-width: 620px) {
+      #${settingsRootId} .ob-bridge-section[data-ob-panel="sync"] .ob-bridge-choiceGroup--grid {
+        grid-template-columns: minmax(0, 1fr);
       }
     }
   `;

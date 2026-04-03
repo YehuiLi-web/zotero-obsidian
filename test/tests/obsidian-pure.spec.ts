@@ -20,9 +20,15 @@ import {
   getRelativePath,
   makeLibraryOpenLink,
   makeLibrarySelectLink,
+  renderManagedObsidianFileNameFromTemplateContext,
   sanitizeFileNamePart,
   sanitizeFileNameToken,
 } from "../../src/modules/obsidian/paths";
+import {
+  LEGACY_OBSIDIAN_FILE_NAME_TEMPLATE,
+  MANAGED_FILE_NAME_TEMPLATE_TOKENS,
+  normalizeObsidianFileNameTemplate,
+} from "../../src/modules/obsidian/fileNameTemplate";
 import {
   DEFAULT_OBSIDIAN_FILE_NAME_TEMPLATE,
   DEFAULT_MANAGED_FRONTMATTER_FIELDS,
@@ -109,6 +115,40 @@ describe("Obsidian Module Pure Functions", function () {
       assert.equal(
         applyManagedFileNameTemplate(template, context),
         "Test Title - 2024 - Smith",
+      );
+    });
+
+    it("normalizes the legacy default template but preserves custom rules", function () {
+      assert.equal(
+        normalizeObsidianFileNameTemplate(LEGACY_OBSIDIAN_FILE_NAME_TEMPLATE),
+        DEFAULT_OBSIDIAN_FILE_NAME_TEMPLATE,
+      );
+      assert.equal(
+        normalizeObsidianFileNameTemplate("{{title}} - {{year}} - {{key}}"),
+        "{{title}} - {{year}} - {{key}}",
+      );
+    });
+
+    it("keeps the settings token list aligned with runtime filename rendering", function () {
+      assert.includeMembers(
+        [...MANAGED_FILE_NAME_TEMPLATE_TOKENS],
+        ["uniqueKey", "noteKey", "key", "libraryID", "creators"],
+      );
+      assert.equal(
+        renderManagedObsidianFileNameFromTemplateContext({
+          title: "Attention Is All You Need",
+          libraryID: "1",
+          key: "vaswani2017attention",
+          uniqueKey: "4F7C8A21B3",
+          noteKey: "preview",
+          year: "2017",
+          firstCreator: "Vaswani",
+          creators: "Vaswani, Shazeer, Parmar",
+          citationKey: "vaswani2017attention",
+          publication: "NIPS",
+          itemType: "journalArticle",
+        }),
+        "Attention Is All You Need -- 4F7C8A21B3.md",
       );
     });
 

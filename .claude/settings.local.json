@@ -26,7 +26,12 @@
       "Bash(grep -r \"Zotero\\\\[\" /e/obsidian_zotero/zotero-obsidian/build/addon/chrome/content/*.js)",
       "Bash(grep -v \"//.*__addonRef__\")",
       "Bash(node -e \"const pkg = require\\(''''./package.json''''\\); console.log\\(''''addonRef:'''', pkg.config.addonRef, ''''addonInstance:'''', pkg.config.addonInstance\\)\")",
-      "Bash(find E:/obsidian_zotero/zotero-obsidian/addon -name *preferences* -o -name *pref*)"
+      "Bash(find E:/obsidian_zotero/zotero-obsidian/addon -name *preferences* -o -name *pref*)",
+      "Bash(find src/modules/obsidian -type f \\\\\\( -name \"*.ts\" -o -name \"*.tsx\" \\\\\\) -exec wc -l {} +)",
+      "Bash(find src/modules/obsidian/prefsUI -type f \\\\\\( -name \"*.ts\" -o -name \"*.tsx\" \\\\\\) -exec wc -l {} +)",
+      "Bash(ls -lh src/modules/obsidian/*.ts)",
+      "Bash(grep -n \"context\\\\.\" /e/obsidian_zotero/zotero-obsidian/src/modules/preferences/sections/*/index.ts)",
+      "Bash(grep -r \"try\\\\|catch\" /E/obsidian_zotero/zotero-obsidian/src/modules/template/*.ts)"
     ]
   }
 }
