@@ -1,0 +1,212 @@
+{
+  "global": [
+    {
+      "name": "useMarkdown",
+      "code": "\n// @use-markdown\n",
+      "type": "syntax"
+    },
+    {
+      "name": "useRefresh",
+      "code": "\n// @use-refresh\n",
+      "type": "syntax"
+    },
+    {
+      "name": "dryRunFlag",
+      "code": "_env.dryRun",
+      "type": "variable"
+    }
+  ],
+  "item": [
+    {
+      "name": "itemBeforeLoop",
+      "code": "\n// @beforeloop-begin\n\n// @beforeloop-end\n",
+      "type": "syntax"
+    },
+    {
+      "name": "itemInLoop",
+      "code": "\n// @default-begin\n\n// @default-end\n",
+      "type": "syntax"
+    },
+    {
+      "name": "itemAfterLoop",
+      "code": "\n// @afterloop-begin\n\n// @afterloop-end\n",
+      "type": "syntax"
+    },
+    {
+      "name": "itemItems",
+      "code": "items",
+      "type": "variable"
+    },
+    {
+      "name": "itemItem",
+      "code": "item",
+      "type": "variable"
+    },
+    {
+      "name": "itemTopItem",
+      "code": "topItem",
+      "type": "variable"
+    },
+    {
+      "name": "itemTargetNoteItem",
+      "code": "targetNoteItem",
+      "type": "variable"
+    },
+    {
+      "name": "itemCopyNoteImage",
+      "code": "${copyNoteImage(...)}",
+      "type": "expression"
+    },
+    {
+      "name": "itemSharedObj",
+      "code": "sharedObj",
+      "type": "variable"
+    },
+    {
+      "name": "itemFieldTitle",
+      "code": "${topItem.getField(\"title\")}",
+      "type": "expression"
+    },
+    {
+      "name": "itemFieldAbstract",
+      "code": "${topItem.getField(\"abstractNote\")}",
+      "type": "expression"
+    },
+    {
+      "name": "itemFieldCitKey",
+      "code": "${topItem.getField(\"citationKey\")}",
+      "type": "expression"
+    },
+    {
+      "name": "itemFieldDate",
+      "code": "${topItem.getField(\"date\")}",
+      "type": "expression"
+    },
+    {
+      "name": "itemFieldDOI",
+      "code": "${topItem.getField(\"DOI\")}",
+      "type": "expression"
+    },
+    {
+      "name": "itemFieldDOIURL",
+      "code": "\n${{\nconst doi = topItem.getField(\"DOI\");\nconst url = topItem.getField(\"url\");\nif (doi) {\n  return `DOI: <a href=\"https://doi.org/${doi}\">${doi}</a>`;\n} else {\n  return `URL: <a href=\"${url}\">${url}</a>`;\n}\n}}$\n",
+      "type": "expression"
+    },
+    {
+      "name": "itemFieldAuthors",
+      "code": "${topItem.getCreators().map((v)=>v.firstName+\" \"+v.lastName).join(\"; \")}",
+      "type": "expression"
+    },
+    {
+      "name": "itemFieldJournal",
+      "code": "${topItem.getField(\"publicationTitle\")}",
+      "type": "expression"
+    },
+    {
+      "name": "itemFieldTitleTranslation",
+      "code": "${topItem.getField(\"titleTranslation\")}",
+      "type": "expression"
+    }
+  ],
+  "text": [
+    {
+      "name": "textTargetNoteItem",
+      "code": "targetNoteItem",
+      "type": "variable"
+    },
+    {
+      "name": "textSharedObj",
+      "code": "sharedObj",
+      "type": "variable"
+    }
+  ],
+  "QuickInsertV3": [
+    {
+      "name": "quickInsertLink",
+      "code": "link",
+      "type": "variable"
+    },
+    {
+      "name": "quickInsertLinkText",
+      "code": "linkText",
+      "type": "variable"
+    },
+    {
+      "name": "quickInsertSubNoteItem",
+      "code": "subNoteItem",
+      "type": "variable"
+    },
+    {
+      "name": "quickInsertNoteItem",
+      "code": "noteItem",
+      "type": "variable"
+    }
+  ],
+  "QuickImportV2": [
+    {
+      "name": "quickImportLink",
+      "code": "link",
+      "type": "variable"
+    },
+    {
+      "name": "quickImportNoteItem",
+      "code": "noteItem",
+      "type": "variable"
+    }
+  ],
+  "QuickNoteV5": [
+    {
+      "name": "quickNoteAnnotationItem",
+      "code": "annotationItem",
+      "type": "variable"
+    },
+    {
+      "name": "quickNoteTopItem",
+      "code": "topItem",
+      "type": "variable"
+    },
+    {
+      "name": "quickNoteNoteItem",
+      "code": "noteItem",
+      "type": "variable"
+    }
+  ],
+  "ExportMDFileNameV2": [
+    {
+      "name": "exportMDFileNameNoteItem",
+      "code": "noteItem",
+      "type": "variable"
+    }
+  ],
+  "ExportMDFileHeaderV2": [
+    {
+      "name": "exportMDFileHeaderNoteItem",
+      "code": "noteItem",
+      "type": "variable"
+    }
+  ],
+  "ExportMDFileContent": [
+    {
+      "name": "exportMDFileContentNoteItem",
+      "code": "noteItem",
+      "type": "variable"
+    },
+    {
+      "name": "exportMDFileContentMDContent",
+      "code": "mdContent",
+      "type": "variable"
+    }
+  ],
+  "ExportLatexFileContent": [
+    {
+      "name": "exportLatexFileContentNoteItem",
+      "code": "noteItem",
+      "type": "variable"
+    },
+    {
+      "name": "exportLatexFileContentLatexContent",
+      "code": "latexContent",
+      "type": "variable"
+    }
+  ]
+}

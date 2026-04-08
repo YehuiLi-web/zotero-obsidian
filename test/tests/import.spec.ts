@@ -313,4 +313,56 @@ This generated block should not replace the Zotero-side user note.
     await Zotero.Items.erase(note.id);
     await Zotero.Items.erase(topItem.id);
   });
+
+  it("hooks.onSyncing does not overwrite managed markdown when the USER block is missing", async function () {
+    const { topItem, note } = await createManagedObsidianNote();
+    const tempDir = await getTempDirectory();
+    const filePath = PathUtils.join(tempDir, "managed-sync-missing-user.md");
+    const originalNoteContent = note.getNote();
+    await addon.api.$export.saveMD(filePath, note.id, {
+      keepNoteLink: false,
+      withYAMLHeader: true,
+    });
+
+    const malformedMarkdown = `---
+reading_status: review
+rating: 3
+---
+
+<!-- ${config.addonRef}:BEGIN GENERATED -->
+
+# Managed Sync Article
+
+This generated block should stay on disk.
+
+<!-- ${config.addonRef}:END GENERATED -->
+`;
+
+    await Zotero.File.putContentsAsync(filePath, malformedMarkdown);
+
+    await addon.hooks.onSyncing([Zotero.Items.get(note.id) as Zotero.Item], {
+      quiet: true,
+      skipActive: false,
+      reason: "managed-missing-user-block",
+    });
+
+    const importedNote = Zotero.Items.get(note.id);
+    const importedTopItem = Zotero.Items.get(topItem.id);
+    const markdownAfterSync = (await Zotero.File.getContentsAsync(
+      filePath,
+      "utf-8",
+    )) as string;
+
+    assert.equal(importedNote.getNote(), originalNoteContent);
+    assert.include(
+      String(importedTopItem.getField("extra") || ""),
+      "reading_status: review",
+    );
+    assert.include(String(importedTopItem.getField("extra") || ""), "rating: 3");
+    assert.notInclude(markdownAfterSync, "BEGIN USER");
+    assert.include(markdownAfterSync, "This generated block should stay on disk.");
+
+    await Zotero.Items.erase(note.id);
+    await Zotero.Items.erase(topItem.id);
+  });
 });

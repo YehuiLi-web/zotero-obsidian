@@ -1,10 +1,6 @@
-import { getPref } from "../../../../../utils/prefs";
-import { formatPath, jointPath } from "../../../../../utils/str";
 import {
-  deriveObsidianPathDefaults,
-  OBSIDIAN_DASHBOARD_DIR_PREF,
+  resolveObsidianPaths,
 } from "../../../../obsidian/settings";
-import { getDefaultDashboardDir } from "../../../../obsidian/paths";
 import { cleanInline, XHTML_NS } from "../../../../obsidian/shared";
 import { OBSIDIAN_SETTINGS_ROOT_ID } from "../uiIds";
 
@@ -216,11 +212,11 @@ export function uiText(zh: string, en: string) {
       cleanInline(prefDoc?.documentElement?.getAttribute("lang") || ""),
       cleanInline(String(prefDoc?.defaultView?.navigator?.language || "")),
       cleanInline(
-        String((globalThis as any).Services?.locale?.appLocaleAsBCP47 || ""),
+        String(Services.locale?.appLocaleAsBCP47 || ""),
       ),
-      cleanInline(String((globalThis as any).navigator?.language || "")),
+      cleanInline(String(globalThis.navigator?.language || "")),
       cleanInline(String(Zotero.getMainWindow?.()?.navigator?.language || "")),
-      cleanInline(String((Zotero as any).locale || "")),
+      cleanInline(String(Zotero.locale || "")),
     ]
       .find(Boolean)
       ?.toLowerCase() || "";
@@ -239,39 +235,7 @@ export function escapePrefHTML(doc: Document, value: string) {
 }
 
 export function getObsidianResolvedPaths() {
-  const appPath = cleanInline(String(getPref("obsidian.appPath") || ""));
-  const vaultRoot = cleanInline(String(getPref("obsidian.vaultRoot") || ""));
-  const defaults = deriveObsidianPathDefaults(vaultRoot);
-  const notesDirPref = cleanInline(String(getPref("obsidian.notesDir") || ""));
-  const assetsDirPref = cleanInline(
-    String(getPref("obsidian.assetsDir") || ""),
-  );
-  const dashboardDirPref = cleanInline(
-    String(getPref(OBSIDIAN_DASHBOARD_DIR_PREF) || ""),
-  );
-  const notesDir = formatPath(notesDirPref || defaults.notesDir);
-  const assetsDir = formatPath(
-    assetsDirPref ||
-      defaults.assetsDir ||
-      (notesDir
-        ? jointPath(PathUtils.parent(notesDir) || notesDir, "assets", "zotero")
-        : ""),
-  );
-  const dashboardDir = formatPath(
-    dashboardDirPref ||
-      defaults.dashboardDir ||
-      getDefaultDashboardDir(vaultRoot, notesDir),
-  );
-  return {
-    appPath,
-    vaultRoot,
-    notesDirPref,
-    notesDir,
-    assetsDirPref,
-    assetsDir,
-    dashboardDirPref,
-    dashboardDir,
-  };
+  return resolveObsidianPaths();
 }
 
 export function getObsidianSettingsRoot(doc: Document) {

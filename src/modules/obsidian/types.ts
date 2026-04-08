@@ -3,6 +3,7 @@
 
 export type ObsidianSyncScope = "selection" | "currentList" | "library";
 export type ObsidianUpdateStrategy = "managed" | "overwrite" | "skip";
+export type ObsidianCollectionFolderMode = "none" | "deepest";
 export type ManagedPathMode = "template-managed" | "preserve-user-path";
 export type RegistryPresenceState = "active" | "missing" | "tombstoned";
 export type ManagedFrontmatterPresetId =
@@ -11,17 +12,23 @@ export type ManagedFrontmatterPresetId =
   | "dataview"
   | "custom";
 export type ManagedFrontmatterOptionKey =
+  | "title"
   | "titleTranslation"
+  | "aliases"
   | "itemType"
   | "date"
   | "doi"
+  | "readingStatus"
   | "citationKey"
   | "publication"
   | "itemLink"
   | "pdfLink"
   | "authors"
   | "collections"
+  | "obsidianTags"
   | "zoteroTags"
+  | "libraryId"
+  | "noteVersion"
   | "rating";
 export type ManagedFrontmatterOptionGroup = "reference" | "links" | "library";
 
@@ -39,6 +46,10 @@ export interface MissingMetadataTranslationConfig {
   includeAbstract: boolean;
 }
 
+export interface ObsidianCollectionFolderConfig {
+  mode: ObsidianCollectionFolderMode;
+}
+
 export interface ObsidianSettings {
   vaultRoot: string;
   notesDir: string;
@@ -53,6 +64,7 @@ export interface ObsidianSettings {
   fileNameTemplate: string;
   syncScope: ObsidianSyncScope;
   updateStrategy: ObsidianUpdateStrategy;
+  collectionFolders: ObsidianCollectionFolderConfig;
   content: ManagedNoteContentConfig;
   translation: MissingMetadataTranslationConfig;
 }
@@ -63,6 +75,28 @@ export interface ObsidianPathDefaults {
   notesDir: string;
   assetsDir: string;
   dashboardDir: string;
+}
+
+export interface ObsidianResolvedPaths {
+  appPath: string;
+  vaultRoot: string;
+  notesDirPref: string;
+  notesDir: string;
+  assetsDirPref: string;
+  assetsDir: string;
+  dashboardDirPref: string;
+  dashboardDir: string;
+  defaults: ObsidianPathDefaults;
+}
+
+export interface ObsidianPathValidation {
+  appPathExists: boolean;
+  vaultRootExists: boolean;
+  vaultRootIsDirectory: boolean;
+  notesDirExists: boolean;
+  notesDirParentExists: boolean;
+  assetsDirExists: boolean;
+  dashboardDirExists: boolean;
 }
 
 export interface ObsidianDetectedVault {

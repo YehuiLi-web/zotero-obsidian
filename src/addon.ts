@@ -35,12 +35,29 @@ class Addon {
       data?: LargePrefHelper;
       historyData?: LargePrefHelper;
       lock: boolean;
+      pending: null | {
+        all: boolean;
+        noteIds: number[];
+        quiet: boolean;
+        skipActive: boolean;
+        reasons: string[];
+      };
       manager: {
         window?: Window;
         tableHelper?: VirtualizedTableHelper;
         historyTableHelper?: VirtualizedTableHelper;
+        allData: SyncDataType[];
         data: SyncDataType[];
         historyData: SyncHistoryDataType[];
+        filterText: string;
+        filterMode:
+          | "all"
+          | "changed"
+          | "push"
+          | "pull"
+          | "conflict"
+          | "missing"
+          | "clean";
         columnIndex: number;
         columnAscending: boolean;
       };
@@ -121,9 +138,13 @@ class Addon {
     },
     sync: {
       lock: false,
+      pending: null,
       manager: {
+        allData: [],
         data: [],
         historyData: [],
+        filterText: "",
+        filterMode: "all",
         columnAscending: true,
         columnIndex: 0,
       },

@@ -112,8 +112,14 @@ async function scanWatchedFiles() {
   const noteIds = await addon.api.sync.getSyncNoteIds();
   const now = Date.now();
   const activeNoteIds: number[] = [];
+  const pendingChanges = addon.data.sync.watcher.pendingChanges;
+  const processingSet = new Set(addon.data.sync.watcher.processing);
 
   for (const noteId of noteIds) {
+    if (pendingChanges[noteId] || processingSet.has(noteId)) {
+      activeNoteIds.push(noteId);
+      continue;
+    }
     const noteItem = Zotero.Items.get(noteId);
     const syncStatus = addon.api.sync.getSyncStatus(noteId);
     const filePath = await resolveWatchTargetPath(noteItem, noteId);

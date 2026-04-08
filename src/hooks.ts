@@ -1,4 +1,5 @@
 import { config } from "../package.json";
+import { logError } from "./utils/errorUtils";
 import { initLocale } from "./utils/locale";
 import {
   handlePrefsEvent,
@@ -89,10 +90,7 @@ function resolveConfiguredNotesDir() {
     const defaults = deriveObsidianPathDefaults(vaultRoot);
     return defaults.notesDir || "";
   } catch (error) {
-    ztoolkit.log(
-      "[ObsidianBridge] failed to derive default notes directory",
-      error,
-    );
+    logError("Resolve configured notes directory", error, vaultRoot);
     return "";
   }
 }
@@ -109,10 +107,7 @@ async function primeFrontmatterIndex() {
     try {
       await ensureFrontmatterIndex(notesDir);
     } catch (error) {
-      ztoolkit.log(
-        "[ObsidianBridge] failed to prime frontmatter index",
-        error,
-      );
+      logError("Prime frontmatter index", error, notesDir);
     }
   })();
   try {

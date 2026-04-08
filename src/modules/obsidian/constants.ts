@@ -25,6 +25,8 @@ export const OBSIDIAN_ITEM_TEMPLATE_PREF = "obsidian.itemTemplate";
 export const OBSIDIAN_FILE_NAME_TEMPLATE_PREF = "obsidian.fileNameTemplate";
 export const OBSIDIAN_SYNC_SCOPE_PREF = "obsidian.syncScope";
 export const OBSIDIAN_UPDATE_STRATEGY_PREF = "obsidian.updateStrategy";
+export const OBSIDIAN_COLLECTION_FOLDER_MODE_PREF =
+  "obsidian.collectionFolderMode";
 export const OBSIDIAN_FRONTMATTER_FIELDS_PREF = "obsidian.frontmatterFields";
 export const OBSIDIAN_INCLUDE_METADATA_PREF = "obsidian.includeMetadata";
 export const OBSIDIAN_INCLUDE_ABSTRACT_PREF = "obsidian.includeAbstract";
@@ -85,11 +87,25 @@ export const OBSIDIAN_METADATA_PRESET_RESYNC_BUTTON_ID = `${config.addonRef}-obs
 // ── Static data ──
 export const MANAGED_FRONTMATTER_OPTIONS: ManagedFrontmatterOption[] = [
   {
+    key: "title",
+    group: "reference",
+    label: "标题",
+    help: "title",
+    frontmatterKeys: ["title"],
+  },
+  {
     key: "titleTranslation",
     group: "reference",
-    label: "中文标题与别名",
-    help: "title_translation, aliases",
-    frontmatterKeys: ["title_translation", "aliases"],
+    label: "中文标题",
+    help: "title_translation",
+    frontmatterKeys: ["title_translation"],
+  },
+  {
+    key: "aliases",
+    group: "reference",
+    label: "别名",
+    help: "aliases",
+    frontmatterKeys: ["aliases"],
   },
   {
     key: "itemType",
@@ -111,6 +127,13 @@ export const MANAGED_FRONTMATTER_OPTIONS: ManagedFrontmatterOption[] = [
     label: "DOI",
     help: "doi",
     frontmatterKeys: ["doi"],
+  },
+  {
+    key: "readingStatus",
+    group: "reference",
+    label: "阅读状态",
+    help: "reading_status",
+    frontmatterKeys: ["reading_status"],
   },
   {
     key: "citationKey",
@@ -155,11 +178,32 @@ export const MANAGED_FRONTMATTER_OPTIONS: ManagedFrontmatterOption[] = [
     frontmatterKeys: ["collections"],
   },
   {
+    key: "obsidianTags",
+    group: "library",
+    label: "Obsidian 标签",
+    help: "tags -> 仅供 Obsidian 本地组织",
+    frontmatterKeys: ["tags"],
+  },
+  {
     key: "zoteroTags",
     group: "library",
     label: "Zotero 标签（回写入口）",
     help: "zotero_tags -> 回写 Zotero；tags -> 仅供 Obsidian 展示",
     frontmatterKeys: ["zotero_tags"],
+  },
+  {
+    key: "libraryId",
+    group: "library",
+    label: "Zotero 库 ID（兼容）",
+    help: "$libraryID",
+    frontmatterKeys: ["$libraryID"],
+  },
+  {
+    key: "noteVersion",
+    group: "library",
+    label: "笔记版本（兼容）",
+    help: "$version",
+    frontmatterKeys: ["$version"],
   },
   {
     key: "rating",
@@ -170,40 +214,47 @@ export const MANAGED_FRONTMATTER_OPTIONS: ManagedFrontmatterOption[] = [
   },
 ];
 
-export const DEFAULT_MANAGED_FRONTMATTER_FIELDS = MANAGED_FRONTMATTER_OPTIONS.map(
-  (option) => option.key,
-);
-
-export const RECOMMENDED_MANAGED_FRONTMATTER_FIELDS: ManagedFrontmatterOptionKey[] = [
+export const DEFAULT_MANAGED_FRONTMATTER_FIELDS: ManagedFrontmatterOptionKey[] = [
+  "title",
   "titleTranslation",
+  "aliases",
   "itemType",
   "date",
   "doi",
+  "readingStatus",
   "citationKey",
   "publication",
   "itemLink",
   "pdfLink",
   "authors",
   "collections",
+  "obsidianTags",
+  "zoteroTags",
+  "rating",
+];
+
+export const RECOMMENDED_MANAGED_FRONTMATTER_FIELDS: ManagedFrontmatterOptionKey[] = [
+  "title",
+  "titleTranslation",
+  "aliases",
+  "itemType",
+  "date",
+  "doi",
+  "readingStatus",
+  "citationKey",
+  "publication",
+  "itemLink",
+  "pdfLink",
+  "authors",
+  "collections",
+  "obsidianTags",
   "zoteroTags",
   "rating",
 ];
 
 export const FIXED_MANAGED_FRONTMATTER_KEYS = [
-  "title",
   "zotero_key",
   "zotero_note_key",
-  "citation_key",
-  "citekey",
-  "tags",
-  "status",
-  "reading_status",
-  "summary_done",
-  "project",
-  "topic",
-  "method",
-  "bridge_managed",
-  "bridge_schema",
 ];
 
 export const MANAGED_FRONTMATTER_PRESETS: ManagedFrontmatterPresetDefinition[] = [
@@ -221,7 +272,16 @@ export const MANAGED_FRONTMATTER_PRESETS: ManagedFrontmatterPresetDefinition[] =
   },
   {
     id: "dataview",
-    fields: ["titleTranslation", "itemType", "date", "doi", "publication"],
+    fields: [
+      "title",
+      "titleTranslation",
+      "itemType",
+      "date",
+      "doi",
+      "readingStatus",
+      "publication",
+      "obsidianTags",
+    ],
     titleL10nId: "obsidian-frontmatter-preset-dataview-title",
     descriptionL10nId: "obsidian-frontmatter-preset-dataview-description",
   },
@@ -231,17 +291,23 @@ export const MANAGED_FRONTMATTER_OPTION_LABEL_KEYS: Record<
   ManagedFrontmatterOptionKey,
   string
 > = {
+  title: "obsidian-frontmatter-option-title",
   titleTranslation: "obsidian-frontmatter-option-titleTranslation",
+  aliases: "obsidian-frontmatter-option-aliases",
   itemType: "obsidian-frontmatter-option-itemType",
   date: "obsidian-frontmatter-option-date",
   doi: "obsidian-frontmatter-option-doi",
+  readingStatus: "obsidian-frontmatter-option-readingStatus",
   citationKey: "obsidian-frontmatter-option-citationKey",
   publication: "obsidian-frontmatter-option-publication",
   itemLink: "obsidian-frontmatter-option-itemLink",
   pdfLink: "obsidian-frontmatter-option-pdfLink",
   authors: "obsidian-frontmatter-option-authors",
   collections: "obsidian-frontmatter-option-collections",
+  obsidianTags: "obsidian-frontmatter-option-obsidianTags",
   zoteroTags: "obsidian-frontmatter-option-zoteroTags",
+  libraryId: "obsidian-frontmatter-option-libraryId",
+  noteVersion: "obsidian-frontmatter-option-noteVersion",
   rating: "obsidian-frontmatter-option-rating",
 };
 

@@ -11,6 +11,10 @@ import {
   USER_BLOCK_START,
 } from "../../src/modules/obsidian/markdown";
 import {
+  getItemCollectionFolderPaths,
+  resolveManagedNotesDirForItem,
+} from "../../src/modules/obsidian/collectionFolders";
+import {
   buildCollectionItemSelectURI,
   getBestItemLink,
   applyManagedFileNameTemplate,
@@ -217,6 +221,70 @@ describe("Obsidian Module Pure Functions", function () {
         getRelativePath("/vault", "/vault/notes/sub").replace(/\\/g, "/"),
         "notes/sub",
       );
+    });
+
+    it("prefers the deepest collection hierarchy when deriving note folders", async function () {
+      const originalGetCollectionsContainingItems =
+        Zotero.Collections.getCollectionsContainingItems;
+      const originalGetByLibraryAndKey = (Zotero.Collections as any)
+        .getByLibraryAndKey;
+      const topItem = {
+        id: 42,
+        libraryID: 1,
+        isRegularItem: () => true,
+      } as any;
+      const rootCollection = {
+        key: "ROOT1",
+        name: "Projects",
+        libraryID: 1,
+      };
+      const nestedCollection = {
+        key: "CHILD1",
+        name: "Vision / ML",
+        libraryID: 1,
+        parentKey: "ROOT1",
+      };
+      const shallowCollection = {
+        key: "INBOX1",
+        name: "Inbox",
+        libraryID: 1,
+      };
+
+      Zotero.Collections.getCollectionsContainingItems = async () =>
+        [shallowCollection, nestedCollection] as any;
+      (Zotero.Collections as any).getByLibraryAndKey = async (
+        libraryID: number,
+        key: string,
+      ) => {
+        if (libraryID !== 1) {
+          return false;
+        }
+        return key === "ROOT1" ? rootCollection : false;
+      };
+
+      try {
+        assert.deepEqual(await getItemCollectionFolderPaths(topItem), [
+          ["Projects", "Vision - ML"],
+          ["Inbox"],
+        ]);
+        assert.equal(
+          await resolveManagedNotesDirForItem(
+            topItem,
+            "/vault/notes",
+            "deepest",
+          ),
+          "/vault/notes/Projects/Vision - ML",
+        );
+        assert.equal(
+          await resolveManagedNotesDirForItem(topItem, "/vault/notes", "none"),
+          "/vault/notes",
+        );
+      } finally {
+        Zotero.Collections.getCollectionsContainingItems =
+          originalGetCollectionsContainingItems;
+        (Zotero.Collections as any).getByLibraryAndKey =
+          originalGetByLibraryAndKey;
+      }
     });
   });
 

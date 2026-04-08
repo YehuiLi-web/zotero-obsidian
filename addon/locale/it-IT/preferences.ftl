@@ -116,6 +116,7 @@ obsidian-dashboard-help =
     .value = This creates Research Dashboard, Topic Dashboard, and Reading Pipeline.base in the dashboard folder. Enable the Bases core plugin and the Dataview community plugin in Obsidian for the best experience.
 obsidian-childNotes-title = Child Note Bridge Rules
 obsidian-childNotes-tags-label = Match tags
+obsidian-childNotes-defaultTags = ai-literature-review, ai-reading, ai-summary, ai-notes
 obsidian-childNotes-help =
     .value = Only child notes carrying these tags are stitched into the managed Obsidian literature note. Separate tags with commas or semicolons and match them exactly.
 obsidian-childNotes-promptSelect =

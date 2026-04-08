@@ -2,7 +2,11 @@ import { getString } from "../../../../utils/locale";
 import { getPref } from "../../../../utils/prefs";
 import { jointPath } from "../../../../utils/str";
 import {
+  resolveManagedNotesDirForItem,
+} from "../../../obsidian/collectionFolders";
+import {
   DEFAULT_CHILD_NOTE_TAGS,
+  getDefaultChildNoteTagsText,
   OBSIDIAN_CHILD_NOTE_TAGS_PREF,
 } from "../../../obsidian/childNotes";
 import {
@@ -37,8 +41,10 @@ import {
   getMissingMetadataTranslationConfig,
   getMetadataPreset,
   getMetadataPresetLibrary,
+  normalizeObsidianCollectionFolderMode,
   resolveObsidianItemTemplateName,
   getStringPrefOrDefault,
+  OBSIDIAN_COLLECTION_FOLDER_MODE_PREF,
   normalizeObsidianSyncScope,
   normalizeObsidianUpdateStrategy,
   OBSIDIAN_SYNC_SCOPE_PREF,
@@ -207,9 +213,20 @@ function getPreviewNoteItem(
   } as Zotero.Item;
 }
 
-function getPreviewPathOptions() {
+async function getPreviewPathOptions(topItem?: Zotero.Item | false) {
   const { notesDir, assetsDir } = getObsidianResolvedPaths();
-  const noteDir = notesDir || uiText("notes", "notes");
+  const collectionFolderMode = normalizeObsidianCollectionFolderMode(
+    String(getPref(OBSIDIAN_COLLECTION_FOLDER_MODE_PREF) || ""),
+  );
+  const baseNoteDir = notesDir || uiText("notes", "notes");
+  const noteDir =
+    topItem && topItem.isRegularItem()
+      ? await resolveManagedNotesDirForItem(
+          topItem,
+          baseNoteDir,
+          collectionFolderMode,
+        )
+      : baseNoteDir;
   const attachmentDir =
     assetsDir ||
     (notesDir
@@ -398,7 +415,10 @@ export function buildPreviewSignature(topItem?: Zotero.Item | false) {
     content: getManagedNoteContentConfig(),
     childNoteTags: getStringPrefOrDefault(
       OBSIDIAN_CHILD_NOTE_TAGS_PREF,
-      DEFAULT_CHILD_NOTE_TAGS.join(", "),
+      getDefaultChildNoteTagsText(),
+    ),
+    collectionFolderMode: normalizeObsidianCollectionFolderMode(
+      String(getPref(OBSIDIAN_COLLECTION_FOLDER_MODE_PREF) || ""),
     ),
     notesDir,
     assetsDir,
@@ -527,6 +547,13 @@ export function renderSyncSummary() {
   if (getBooleanPrefOrDefault("obsidian.revealAfterSync", false)) {
     behaviors.push(uiText("同步后在文件夹显示", "reveal in folder"));
   }
+  if (
+    normalizeObsidianCollectionFolderMode(
+      String(getPref(OBSIDIAN_COLLECTION_FOLDER_MODE_PREF) || ""),
+    ) !== "none"
+  ) {
+    behaviors.push(uiText("按 collection 分目录", "organize by collection"));
+  }
   const translationTargets = getEnabledTranslationLabels();
 
   summary.textContent = uiText(
@@ -616,7 +643,7 @@ export async function generateObsidianPreview() {
     const existingNote = getManagedObsidianNoteForItem(topItem);
     const previewNoteItem = getPreviewNoteItem(topItem, existingNote);
     const { noteDir, attachmentDir, attachmentFolder } =
-      getPreviewPathOptions();
+      await getPreviewPathOptions(topItem);
     const { context, creatorsList, zoteroTagsList, collectionsList } =
       await buildItemContext(topItem);
     const metadataPreset = getMetadataPreset();

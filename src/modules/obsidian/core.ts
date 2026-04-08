@@ -2,6 +2,7 @@ export * from "./settings";
 export * from "./frontmatter";
 export * from "./markdown";
 export * from "./childNotes";
+export * from "./collectionFolders";
 export {
   ensureFrontmatterIndex,
   rebuildFrontmatterIndex,

@@ -110,8 +110,8 @@ function openObsidianNote(targetPath: string) {
   const appPath = String(getPref("obsidian.appPath") || "").trim();
   if (appPath) {
     try {
-      const classes = Components.classes as any;
-      const interfaces = Components.interfaces as any;
+      const classes = Components.classes;
+      const interfaces = Components.interfaces;
       const process = classes["@mozilla.org/process/util;1"].createInstance(
         interfaces.nsIProcess,
       );
@@ -124,8 +124,8 @@ function openObsidianNote(targetPath: string) {
   }
 
   try {
-    if (typeof (Zotero as any).launchURL === "function") {
-      (Zotero as any).launchURL(uri);
+    if (typeof Zotero.launchURL === "function") {
+      Zotero.launchURL(uri);
       return true;
     }
   } catch (e) {
@@ -494,6 +494,38 @@ function findExistingObsidianNote(topItem: Zotero.Item) {
   return false;
 }
 
+// ── Centralised path comparison & normalisation ──
+
+/**
+ * Platform-aware full-path comparison.
+ * Case-insensitive on Windows, case-sensitive elsewhere.
+ */
+function isSamePath(left: string, right: string) {
+  const l = formatPath(left);
+  const r = formatPath(right);
+  if (!l || !r) return false;
+  return Zotero.isWin ? l.toLowerCase() === r.toLowerCase() : l === r;
+}
+
+/**
+ * Produce a deterministic lookup key from a path.
+ * Normalises the path and lowercases it on Windows so that
+ * keys are case-insensitive on case-insensitive file systems.
+ */
+function toPathKey(path: string) {
+  const normalized = formatPath(path);
+  if (!normalized) return "";
+  return Zotero.isWin ? normalized.toLowerCase() : normalized;
+}
+
+/**
+ * Normalise a path for comparison (clean whitespace + toPathKey).
+ * Drop-in replacement for the former settings.ts normalizeComparablePath.
+ */
+function normalizeComparablePath(path: string) {
+  return toPathKey(cleanInline(path));
+}
+
 export {
   getDefaultDashboardDir,
   splitComparablePath,
@@ -526,4 +558,7 @@ export {
   resolveManagedNoteBinding,
   resolveManagedNote,
   findExistingObsidianNote,
+  isSamePath,
+  toPathKey,
+  normalizeComparablePath,
 };

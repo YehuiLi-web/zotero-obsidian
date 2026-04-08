@@ -1,9 +1,15 @@
 import YAML = require("yamljs");
-import { safeLog } from "../../utils/log";
+import { logError } from "../../utils/errorUtils";
 import { getPref, setPref } from "../../utils/prefs";
 import { config } from "../../../package.json";
 import { fileExists, formatPath, jointPath } from "../../utils/str";
 import { getManagedObsidianFileNameFresh } from "../obsidian/managed";
+import {
+  getManagedFrontmatterBridge,
+  isManagedFrontmatterBridge,
+  normalizeFrontmatterObject,
+  resolveManagedFrontmatterLibraryID,
+} from "../obsidian/frontmatter";
 import { getManagedPathRegistryEntry } from "../obsidian/managedPathRegistry";
 
 export {
@@ -66,8 +72,11 @@ function updateSyncStatus(noteId: number, status: SyncStatus) {
   addon.data.sync.data?.setValue(String(noteId), status);
 }
 
-function getNoteStatus(noteId: number) {
-  const noteItem = Zotero.Items.get(noteId);
+function getNoteStatus(note: number | Zotero.Item) {
+  const noteItem =
+    typeof note === "number"
+      ? Zotero.Items.get(note)
+      : ((note?.id && (Zotero.Items.get(note.id) as Zotero.Item)) || note);
   if (!noteItem?.isNote()) {
     return;
   }
@@ -130,7 +139,7 @@ function getMDStatusFromContent(contentRaw: string): MDStatus {
     try {
       ret.meta = YAML.parse(yaml);
     } catch (e) {
-      safeLog(e);
+      logError("Parse sync markdown frontmatter", e);
     }
   }
   return ret;
@@ -171,7 +180,7 @@ async function getMDStatus(
       ret.lastmodify = new Date(stat.lastModified || 0);
     }
   } catch (e) {
-    safeLog(e);
+    logError("Read markdown sync status", e, source);
   }
   return ret;
 }
@@ -225,9 +234,10 @@ async function getMDFileName(noteId: number, searchDir?: string) {
             entry.name.split(".").shift()?.split("-").pop() === noteItem.key
           ) {
             const stat = await IOUtils.stat(entry.path);
-            if (stat.lastModified || 0 > matchedDate) {
+            const lastModified = Number(stat.lastModified || 0);
+            if (lastModified > matchedDate) {
               matchedFileName = entry.name;
-              matchedDate = stat.lastModified || 0;
+              matchedDate = lastModified;
             }
           }
         }
@@ -261,19 +271,37 @@ async function findAllSyncedFiles(searchDir: string) {
       }
       if (mdRegex.test(entry.name)) {
         const MDStatus = await getMDStatus(entry.path);
-        if (!MDStatus.meta?.$libraryID || !(MDStatus.meta?.$itemKey || MDStatus.meta?.zotero_note_key)) {
+        const mdMeta = normalizeFrontmatterObject(MDStatus.meta);
+        const bridge = getManagedFrontmatterBridge(mdMeta);
+        const libraryID = resolveManagedFrontmatterLibraryID(mdMeta, {
+          zoteroKey: bridge.zoteroKey,
+          noteKey: bridge.noteKey,
+        });
+        if (!libraryID || !bridge.noteKey) {
           return;
         }
         const item = await Zotero.Items.getByLibraryAndKeyAsync(
-          MDStatus.meta.$libraryID,
-          MDStatus.meta.$itemKey || MDStatus.meta.zotero_note_key,
+          libraryID,
+          bridge.noteKey,
         );
         if (!item || !(item as Zotero.Item).isNote()) {
           return;
         }
-        const mdMeta = MDStatus.meta as Record<string, any>;
+        const parentID = Number((item as Zotero.Item).parentID || 0);
+        const parentTopItem =
+          (item as Zotero.Item).parentItem?.isRegularItem()
+            ? (item as Zotero.Item).parentItem
+            : parentID
+              ? (Zotero.Items.get(parentID) as Zotero.Item | false)
+              : false;
         const managedSourceHash =
-          mdMeta?.bridge_managed && (item as Zotero.Item).isNote()
+          parentTopItem &&
+          parentTopItem.isRegularItem() &&
+          isManagedFrontmatterBridge(mdMeta, {
+            zoteroKey: parentTopItem.key,
+            noteKey: (item as Zotero.Item).key,
+          }) &&
+          (item as Zotero.Item).isNote()
             ? await addon.api.obsidian.getManagedSourceHash(item as Zotero.Item)
             : "";
         results.push({

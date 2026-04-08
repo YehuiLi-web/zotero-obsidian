@@ -1,5 +1,9 @@
 import { Change } from "diff";
 import { VirtualizedTableHelper, wait } from "zotero-plugin-toolkit";
+import {
+  buildDiffPreviewModel,
+  formatDiffPreviewSummary,
+} from "../modules/sync/diffPreview";
 
 const _require = window.require;
 const { getCSSItemTypeIcon } = _require("components/icons");
@@ -10,6 +14,22 @@ type DiffData = Change & {
   id: number;
   text: string;
 };
+
+type DiffChunkRow = {
+  id: number;
+  added: boolean;
+  removed: boolean;
+  preview: string;
+  detail: string;
+};
+
+function diffText(zh: string, en: string) {
+  return String(Zotero.locale || "")
+    .toLowerCase()
+    .startsWith("zh")
+    ? zh
+    : en;
+}
 
 const io: {
   defer: _ZoteroTypes.Promise.DeferredPromise<void>;
@@ -24,11 +44,44 @@ const io: {
     mdModify: string;
     syncTime: string;
   };
+  noteText: string;
+  mdText: string;
 } = window.arguments[0].wrappedJSObject;
 const checkedIDs: Set<number> = new Set();
 const changedDiffData: DiffData[] = io.diffData.filter(
   (diff) => diff.added || diff.removed,
 );
+const linePreviewModel = buildDiffPreviewModel(
+  io.noteText || "",
+  io.mdText || "",
+  {
+    contextLines: 2,
+  },
+);
+const changedDiffRows: DiffChunkRow[] = changedDiffData.map((diff) => {
+  const normalized = String(diff.value || "").replace(/\r\n/g, "\n");
+  const previewSource = normalized.trim() || normalized;
+  const preview = previewSource
+    .split("\n")
+    .filter((line) => line.trim().length > 0)
+    .slice(0, 2)
+    .join(" / ")
+    .trim();
+  const lineCount = normalized
+    .split("\n")
+    .filter(
+      (line, index, lines) => line.length > 0 || index < lines.length - 1,
+    ).length;
+  return {
+    id: diff.id,
+    added: Boolean(diff.added),
+    removed: Boolean(diff.removed),
+    preview: preview || "<empty>",
+    detail: `${diff.added ? diffText("新增", "Added") : diffText("删除", "Removed")} · ${
+      lineCount || 1
+    } ${diffText("行", "lines")} · ${normalized.length} ${diffText("字符", "chars")}`,
+  };
+});
 
 function initSyncInfo() {
   console.log(io.syncInfo);
@@ -79,9 +132,9 @@ function initSyncInfo() {
   });
 
   (document.querySelector("#added-count") as HTMLDivElement).textContent =
-    "+" + io.diffData.filter((diff) => diff.added).length.toString();
+    `~${linePreviewModel.summary.modifiedCount} +${linePreviewModel.summary.addedCount}`;
   (document.querySelector("#removed-count") as HTMLDivElement).textContent =
-    "-" + io.diffData.filter((diff) => diff.removed).length.toString();
+    `-${linePreviewModel.summary.removedCount}`;
 }
 
 let vtableHelper: VirtualizedTableHelper;
@@ -107,28 +160,28 @@ function initList() {
       staticColumns: true,
       disableFontSizeScaling: true,
     })
-    .setProp("getRowCount", () => changedDiffData.length)
+    .setProp("getRowCount", () => changedDiffRows.length)
     .setProp("getRowData", (index) => {
-      const diff = changedDiffData[index];
+      const diff = changedDiffRows[index];
       return {
-        value: diff?.value || "",
+        value: diff?.preview || "",
       };
     })
     .setProp("onKeyDown", (e) => {
       if (e.key === "Enter") {
         const index = vtableHelper.treeInstance.selection.focused;
-        toggleRow(changedDiffData[index].id);
+        toggleRow(changedDiffRows[index].id);
         return false;
       }
       return true;
     })
     .setProp("onActivate", (e) => {
       const index = vtableHelper.treeInstance.selection.focused;
-      toggleRow(changedDiffData[index].id);
+      toggleRow(changedDiffRows[index].id);
       return false;
     })
     .setProp("renderItem", (index, selection, oldElem, columns) => {
-      const diff = changedDiffData[index];
+      const diff = changedDiffRows[index];
       if (!diff) {
         return document.createElement("div");
       }
@@ -151,6 +204,7 @@ function initList() {
       const cell = document.createElement("div");
       // @ts-ignore
       cell.className = `cell ${column.className}`;
+      cell.classList.add("diff-row-cell");
 
       // Append a checkbox before the text
       const checkbox = document.createElement("input");
@@ -166,9 +220,31 @@ function initList() {
       });
       cell.appendChild(checkbox);
 
-      const span = document.createElement("span");
-      span.textContent = diff.value;
-      cell.appendChild(span);
+      const body = document.createElement("div");
+      body.className = "diff-row-body";
+
+      const badge = document.createElement("span");
+      badge.className = `diff-row-badge ${diff.added ? "is-added" : "is-removed"}`;
+      badge.textContent = diff.added
+        ? diffText("新增", "ADD")
+        : diffText("删除", "DEL");
+      body.appendChild(badge);
+
+      const content = document.createElement("div");
+      content.className = "diff-row-content";
+
+      const preview = document.createElement("div");
+      preview.className = "diff-row-preview";
+      preview.textContent = diff.preview;
+      content.appendChild(preview);
+
+      const detail = document.createElement("div");
+      detail.className = "diff-row-detail";
+      detail.textContent = diff.detail;
+      content.appendChild(detail);
+
+      body.appendChild(content);
+      cell.appendChild(body);
 
       div.appendChild(cell);
       return div;
@@ -208,12 +284,69 @@ function initDiffViewer() {
   }
   diffViewer.innerHTML = "";
   const frag = document.createDocumentFragment();
-  io.diffData.forEach((diff) => {
-    const span = document.createElement("span");
-    span.className = diff.added ? "added" : diff.removed ? "removed" : "normal";
-    span.innerText = diff.value;
-    frag.append(span);
+
+  const summary = document.createElement("div");
+  summary.className = "diff-summary";
+  summary.textContent = formatDiffPreviewSummary(linePreviewModel.summary, {
+    isZh: String(Zotero.locale || "")
+      .toLowerCase()
+      .startsWith("zh"),
+    includeHunkCount: true,
   });
+  frag.append(summary);
+
+  for (const [index, hunk] of linePreviewModel.hunks.entries()) {
+    const hunkElement = document.createElement("section");
+    hunkElement.className = "diff-hunk";
+
+    const header = document.createElement("div");
+    header.className = "diff-hunk-header";
+    header.textContent = `@@ ${diffText("片段", "Hunk")} ${index + 1} | old ${
+      hunk.oldStart
+    }-${hunk.oldEnd} -> new ${hunk.newStart}-${hunk.newEnd} | ~${hunk.modifiedCount} +${
+      hunk.addedCount
+    } -${hunk.removedCount}`;
+    hunkElement.append(header);
+
+    for (const line of hunk.lines) {
+      const row = document.createElement("div");
+      row.className = `diff-line diff-line-${line.kind}`;
+
+      const oldLine = document.createElement("span");
+      oldLine.className = "diff-line-number";
+      oldLine.textContent =
+        typeof line.oldLine === "number" ? String(line.oldLine) : "";
+      row.append(oldLine);
+
+      const newLine = document.createElement("span");
+      newLine.className = "diff-line-number";
+      newLine.textContent =
+        typeof line.newLine === "number" ? String(line.newLine) : "";
+      row.append(newLine);
+
+      const marker = document.createElement("span");
+      marker.className = "diff-line-marker";
+      marker.textContent =
+        line.kind === "added"
+          ? "+"
+          : line.kind === "removed"
+            ? "-"
+            : line.kind === "modified-old" || line.kind === "modified-new"
+              ? "~"
+              : " ";
+      row.append(marker);
+
+      const text = document.createElement("span");
+      text.className = "diff-line-text";
+      text.textContent = line.text || "<empty>";
+      row.append(text);
+
+      hunkElement.append(row);
+    }
+
+    frag.append(hunkElement);
+  }
+
   diffViewer.append(frag);
 }
 

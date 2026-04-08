@@ -1,4 +1,6 @@
 import { EditorState, Plugin, PluginKey, Transaction } from "prosemirror-state";
+import { getErrorMessage, reportError } from "../../utils/errorUtils";
+import { safeLog } from "../../utils/log";
 
 import { Popup } from "./popup";
 import { formatMessage } from "./editorStrings";
@@ -629,7 +631,12 @@ class PluginState {
         _currentEditorInstance._editorCore.view.dispatch(mightBeTr);
       }
     } catch (error) {
-      console.error("Error applying command", error);
+      reportError("Magic key command", error, {
+        hint: true,
+        hintText: getErrorMessage(error, "Failed to apply command."),
+        includeContextInHint: false,
+        details: [command.messageId || command.title || index],
+      });
     }
 
     this._closePopup();
@@ -650,7 +657,7 @@ function initMagicKeyPlugin(
   plugins: readonly Plugin[],
   options: MagicKeyOptions,
 ) {
-  console.log("Init BN Magic Key Plugin");
+  safeLog("[ObsidianBridge] init magic key plugin");
   const key = new PluginKey("linkPreviewPlugin");
   return [
     ...plugins,

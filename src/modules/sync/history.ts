@@ -1,10 +1,14 @@
 import YAML = require("yamljs");
-import { diffLines } from "diff";
 import { config } from "../../../package.json";
 import { buildFrontmatter } from "../obsidian/frontmatter";
 import { extractManagedObsidianUserMarkdown } from "../obsidian/markdown";
 import { formatPath } from "../../utils/str";
 import { getPref, setPref } from "../../utils/prefs";
+import {
+  buildDiffPreviewModel,
+  formatDiffPreviewSummary,
+  formatDiffPreviewText,
+} from "./diffPreview";
 
 const SYNC_HISTORY_IDS_PREF = "syncHistoryIds";
 const SYNC_HISTORY_MAX_ENTRIES = 250;
@@ -40,7 +44,9 @@ function initSyncHistory() {
 }
 
 function normalizeHistoryText(text: string) {
-  return String(text || "").replace(/\r\n/g, "\n").trim();
+  return String(text || "")
+    .replace(/\r\n/g, "\n")
+    .trim();
 }
 
 function buildHistoryEntryId() {
@@ -56,7 +62,10 @@ function parseMarkdownFrontmatter(contentRaw: string) {
   try {
     return YAML.parse(result[0].replace(/---/g, "")) || {};
   } catch (error) {
-    ztoolkit.log("[ObsidianBridge] failed to parse sync history frontmatter", error);
+    ztoolkit.log(
+      "[ObsidianBridge] failed to parse sync history frontmatter",
+      error,
+    );
     return {};
   }
 }
@@ -88,28 +97,19 @@ function extractMarkdownHistoryText(
     );
   }
   const normalized = String(contentRaw || "").replace(/\r\n/g, "\n");
-  return normalizeHistoryText(normalized.replace(/^---\n[\s\S]*?\n---\n*/m, ""));
+  return normalizeHistoryText(
+    normalized.replace(/^---\n[\s\S]*?\n---\n*/m, ""),
+  );
 }
 
 function buildDiffStats(beforeText: string, afterText: string) {
-  let addedCount = 0;
-  let removedCount = 0;
-  for (const change of diffLines(beforeText || "", afterText || "")) {
-    if (!change.added && !change.removed) {
-      continue;
-    }
-    const lineCount =
-      change.count ||
-      change.value.split("\n").filter((line, index, array) => {
-        return line.length > 0 || index < array.length - 1;
-      }).length;
-    if (change.added) {
-      addedCount += lineCount;
-    }
-    if (change.removed) {
-      removedCount += lineCount;
-    }
-  }
+  const previewModel = buildDiffPreviewModel(beforeText, afterText, {
+    contextLines: 0,
+  });
+  const addedCount =
+    previewModel.summary.addedCount + previewModel.summary.modifiedCount;
+  const removedCount =
+    previewModel.summary.removedCount + previewModel.summary.modifiedCount;
   return {
     addedCount,
     removedCount,
@@ -129,7 +129,10 @@ function pruneSyncHistory(maxEntries = SYNC_HISTORY_MAX_ENTRIES) {
 }
 
 function addSyncHistory(
-  entry: Omit<SyncHistoryEntry, "id" | "timestamp" | "addedCount" | "removedCount"> & {
+  entry: Omit<
+    SyncHistoryEntry,
+    "id" | "timestamp" | "addedCount" | "removedCount"
+  > & {
     timestamp?: number;
     addedCount?: number;
     removedCount?: number;
@@ -156,9 +159,14 @@ function addSyncHistory(
 }
 
 function getSyncHistory(noteIds: number[] = [], limit = 50) {
-  const noteIdSet = new Set(noteIds.map((noteId) => Number(noteId)).filter(Boolean));
+  const noteIdSet = new Set(
+    noteIds.map((noteId) => Number(noteId)).filter(Boolean),
+  );
   return (addon.data.sync.historyData?.getKeys() || [])
-    .map((key) => addon.data.sync.historyData?.getValue(String(key)) as SyncHistoryEntry)
+    .map(
+      (key) =>
+        addon.data.sync.historyData?.getValue(String(key)) as SyncHistoryEntry,
+    )
     .filter((entry): entry is SyncHistoryEntry => Boolean(entry?.id))
     .filter((entry) => !noteIdSet.size || noteIdSet.has(entry.noteId))
     .sort((left, right) => right.timestamp - left.timestamp)
@@ -166,10 +174,16 @@ function getSyncHistory(noteIds: number[] = [], limit = 50) {
 }
 
 function clearSyncHistory(noteIds: number[] = []) {
-  const noteIdSet = new Set(noteIds.map((noteId) => Number(noteId)).filter(Boolean));
-  const keys = (addon.data.sync.historyData?.getKeys() || []).map((key) => String(key));
+  const noteIdSet = new Set(
+    noteIds.map((noteId) => Number(noteId)).filter(Boolean),
+  );
+  const keys = (addon.data.sync.historyData?.getKeys() || []).map((key) =>
+    String(key),
+  );
   for (const key of keys) {
-    const entry = addon.data.sync.historyData?.getValue(key) as SyncHistoryEntry;
+    const entry = addon.data.sync.historyData?.getValue(
+      key,
+    ) as SyncHistoryEntry;
     if (!entry?.id) {
       addon.data.sync.historyData?.deleteKey(key);
       continue;
@@ -181,7 +195,9 @@ function clearSyncHistory(noteIds: number[] = []) {
 }
 
 function getSyncHistoryActionLabel(entry: SyncHistoryEntry) {
-  const isZh = String(Zotero.locale || "").toLowerCase().startsWith("zh");
+  const isZh = String(Zotero.locale || "")
+    .toLowerCase()
+    .startsWith("zh");
   switch (entry.action) {
     case "import":
       return entry.target === "note"
@@ -204,33 +220,18 @@ function getSyncHistoryActionLabel(entry: SyncHistoryEntry) {
   }
 }
 
-function formatDiffBlock(title: string, beforeText: string, afterText: string) {
-  if (!beforeText && !afterText) {
-    return "";
-  }
-  const lines = [`## ${title}`];
-  const changes = diffLines(beforeText || "", afterText || "");
-  let emittedLines = 0;
-  for (const change of changes) {
-    const prefix = change.added ? "+" : change.removed ? "-" : " ";
-    const changeLines = String(change.value || "").replace(/\r\n/g, "\n").split("\n");
-    for (const line of changeLines) {
-      if (!line && emittedLines >= HISTORY_PREVIEW_LINE_LIMIT) {
-        continue;
-      }
-      lines.push(`${prefix}${line}`);
-      emittedLines += 1;
-      if (emittedLines >= HISTORY_PREVIEW_LINE_LIMIT) {
-        lines.push("... truncated ...");
-        return lines.join("\n").trim();
-      }
-    }
-  }
-  return lines.join("\n").trim();
-}
-
 function formatSyncHistoryPreview(entry: SyncHistoryEntry) {
-  const isZh = String(Zotero.locale || "").toLowerCase().startsWith("zh");
+  const isZh = String(Zotero.locale || "")
+    .toLowerCase()
+    .startsWith("zh");
+  const frontmatterPreviewModel = buildDiffPreviewModel(
+    entry.beforeFrontmatter || "",
+    entry.afterFrontmatter || "",
+  );
+  const contentPreviewModel = buildDiffPreviewModel(
+    entry.beforeText,
+    entry.afterText,
+  );
   const blocks = [
     `${entry.noteName} (${entry.noteId})`,
     `${isZh ? "时间" : "Time"}: ${new Date(entry.timestamp).toLocaleString()}`,
@@ -239,16 +240,51 @@ function formatSyncHistoryPreview(entry: SyncHistoryEntry) {
     `${isZh ? "目标" : "Target"}: ${entry.target}`,
     `${isZh ? "文件" : "File"}: ${formatPath(entry.filePath) || "N/A"}`,
     `${isZh ? "行数" : "Lines"}: +${entry.addedCount} / -${entry.removedCount}`,
+    `${isZh ? "摘要" : "Summary"}: ${formatDiffPreviewSummary(
+      {
+        addedCount:
+          frontmatterPreviewModel.summary.addedCount +
+          contentPreviewModel.summary.addedCount,
+        removedCount:
+          frontmatterPreviewModel.summary.removedCount +
+          contentPreviewModel.summary.removedCount,
+        modifiedCount:
+          frontmatterPreviewModel.summary.modifiedCount +
+          contentPreviewModel.summary.modifiedCount,
+        changedCount:
+          frontmatterPreviewModel.summary.changedCount +
+          contentPreviewModel.summary.changedCount,
+        hunkCount:
+          frontmatterPreviewModel.summary.hunkCount +
+          contentPreviewModel.summary.hunkCount,
+      },
+      {
+        isZh,
+        includeHunkCount: true,
+      },
+    )}`,
   ];
-  const frontmatterBlock = formatDiffBlock(
+  const frontmatterBlock = formatDiffPreviewText(
     isZh ? "Frontmatter" : "Frontmatter",
     entry.beforeFrontmatter || "",
     entry.afterFrontmatter || "",
+    {
+      isZh,
+      contextLines: 1,
+      maxOutputLines: 80,
+      maxHunks: 3,
+    },
   );
-  const bodyBlock = formatDiffBlock(
+  const bodyBlock = formatDiffPreviewText(
     isZh ? "正文内容" : "Content",
     entry.beforeText,
     entry.afterText,
+    {
+      isZh,
+      contextLines: 2,
+      maxOutputLines: HISTORY_PREVIEW_LINE_LIMIT,
+      maxHunks: 6,
+    },
   );
   return [blocks.join("\n"), frontmatterBlock, bodyBlock]
     .filter(Boolean)
@@ -282,7 +318,11 @@ function recordMarkdownSyncHistory(
       noteItem,
       managed,
     ),
-    afterText: extractMarkdownHistoryText(options.afterContent, noteItem, managed),
+    afterText: extractMarkdownHistoryText(
+      options.afterContent,
+      noteItem,
+      managed,
+    ),
     beforeFrontmatter: buildFrontmatterText(beforeMeta),
     afterFrontmatter: buildFrontmatterText(afterMeta),
   });

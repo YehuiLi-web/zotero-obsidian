@@ -1,4 +1,5 @@
 import { config } from "../../../package.json";
+import { logError } from "../../utils/errorUtils";
 
 export {
   ChunkedTemplatePrefStore,
@@ -34,7 +35,7 @@ class ChunkedTemplatePrefStore implements TemplateStore {
     try {
       return JSON.parse(String(rawKeys));
     } catch (error) {
-      ztoolkit.log(error);
+      logError("Parse template key store", error, rawKeys);
       return [];
     }
   }

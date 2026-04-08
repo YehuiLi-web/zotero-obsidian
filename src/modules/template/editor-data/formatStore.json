@@ -1,0 +1,90 @@
+[
+  {
+    "name": "bold",
+    "code": "**${text}**"
+  },
+  {
+    "name": "italic",
+    "code": "_${text}_"
+  },
+  {
+    "name": "strikethrough",
+    "code": "~~${text}~~"
+  },
+  {
+    "name": "underline",
+    "code": "<u>${text}</u>"
+  },
+  {
+    "name": "superscript",
+    "code": "<sup>${text}</sup>"
+  },
+  {
+    "name": "subscript",
+    "code": "<sub>${text}</sub>"
+  },
+  {
+    "name": "textColor",
+    "code": "<span style=\"color: orange\">${text}</span>"
+  },
+  {
+    "name": "link",
+    "code": "[${text}](url)"
+  },
+  {
+    "name": "quote",
+    "code": "\n> ${text}"
+  },
+  {
+    "name": "monospaced",
+    "code": "<code>${text}</code>"
+  },
+  {
+    "name": "code",
+    "code": "\n<pre>\n${text}\n</pre>\n"
+  },
+  {
+    "name": "table",
+    "code": "\n| ${text} | Header 2 |\n|----------|----------|\n| Cell 1   | Cell 2   |\n"
+  },
+  {
+    "name": "h1",
+    "code": "\n# ${text}"
+  },
+  {
+    "name": "h2",
+    "code": "\n## ${text}"
+  },
+  {
+    "name": "h3",
+    "code": "\n### ${text}"
+  },
+  {
+    "name": "bullet",
+    "code": "\n- ${text}"
+  },
+  {
+    "name": "numbered",
+    "code": "\n1. ${text}"
+  },
+  {
+    "name": "inlineMath",
+    "code": "$${text}$",
+    "defaultText": "e=mc^2"
+  },
+  {
+    "name": "blockMath",
+    "code": "\n$$\n${text}\n$$\n",
+    "defaultText": "e=mc^2"
+  },
+  {
+    "name": "inlineScript",
+    "code": "${ ${text} }",
+    "defaultText": "Zotero.version"
+  },
+  {
+    "name": "blockScript",
+    "code": "\n${{\n  ${text}\n}}$\n",
+    "defaultText": "return Zotero.version;"
+  }
+]

@@ -108,8 +108,8 @@ status: [invalid
     assert.equal(merged.status, "review");
   });
 
-  it("mergeManagedFrontmatter drops aliases when title translations are disabled", function () {
-    setManagedFrontmatterFields(["date", "doi"]);
+  it("mergeManagedFrontmatter drops aliases when aliases are disabled separately", function () {
+    setManagedFrontmatterFields(["titleTranslation", "date", "doi"]);
 
     const merged = mergeManagedFrontmatter(
       {
@@ -117,13 +117,15 @@ status: [invalid
         tags: ["project-x"],
       },
       {
+        title_translation: "Generated Translation",
         aliases: ["Generated Alias"],
         tags: ["literature", "zotero"],
       },
     );
 
     assert.notProperty(merged, "aliases");
-    assert.sameMembers(merged.tags, ["literature", "zotero", "project-x"]);
+    assert.equal(merged.title_translation, "Generated Translation");
+    assert.notProperty(merged, "tags");
   });
 
   it("migrates only the legacy filename default to the uniqueKey template", function () {

@@ -1,7 +1,11 @@
 import { addLineToNote } from "../../utils/note";
+import { logError } from "../../utils/errorUtils";
 import { config } from "../../../package.json";
 import { rememberWatchedFileState } from "../sync/watcher";
-import { normalizeFrontmatterObject } from "../obsidian/frontmatter";
+import {
+  isManagedFrontmatterBridge,
+  normalizeFrontmatterObject,
+} from "../obsidian/frontmatter";
 import { refreshFrontmatterIndexEntry } from "../obsidian/frontmatterIndex";
 import { rememberManagedResolvedPath } from "../obsidian/pathResolver";
 import {
@@ -36,7 +40,7 @@ export async function fromMD(
       }
       return (await addon.api.convert.note2noteDiff(item)) || "";
     } catch (error) {
-      ztoolkit.log("[ObsidianBridge] failed to snapshot note diff text", error);
+      logError("Import markdown snapshot note diff text", error, item.id);
       return "";
     }
   };
@@ -45,7 +49,7 @@ export async function fromMD(
   try {
     mdStatus = await addon.api.sync.getMDStatus(filepath);
   } catch (e) {
-    ztoolkit.log(`Import Error: ${String(e)}`);
+    logError("Import markdown read status", e, filepath);
     return;
   }
   let noteItem = options.noteId ? Zotero.Items.get(options.noteId) : undefined;
@@ -103,10 +107,10 @@ export async function fromMD(
   const inferredManagedByMeta = Boolean(
     parentTopItem &&
       parentTopItem.isRegularItem() &&
-      normalizedMeta.bridge_managed &&
-      (!cleanInline(String(normalizedMeta.zotero_key || "")) ||
-        cleanInline(String(normalizedMeta.zotero_key || "")) ===
-          parentTopItem.key),
+      isManagedFrontmatterBridge(normalizedMeta, {
+        zoteroKey: parentTopItem.key,
+        noteKey: noteItem.key,
+      }),
   );
   const inferredManagedByContent = Boolean(
     parentTopItem && parentTopItem.isRegularItem() && hasManagedMarkers,

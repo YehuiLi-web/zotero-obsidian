@@ -54,8 +54,8 @@
     <style>
       html,
       body {
-        min-width: 800px;
-        min-height: 400px;
+        min-width: 980px;
+        min-height: 560px;
       }
       html,
       body,
@@ -68,39 +68,35 @@
         user-select: none;
       }
       .viewport {
-        margin: 0 5px 0 5px;
-        overflow-y: auto;
+        margin: 0;
+        overflow: hidden;
       }
       .viewport-container {
-        padding: 0;
+        padding: 8px;
         margin: 0;
-        height: calc(100% - 50px);
+        height: calc(100% - 60px);
         width: 100%;
         display: flex;
         flex-direction: row;
         overflow: hidden;
         background: var(--material-background);
-        gap: 8px;
+        gap: 10px;
+        box-sizing: border-box;
       }
       .list-viewport {
         width: 46%;
-        min-width: 320px;
+        min-width: 360px;
         overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
       }
       .history-viewport {
         width: 54%;
         overflow: hidden;
         display: flex;
         flex-direction: column;
-        gap: 8px;
-      }
-      #table-container {
-        height: 100%;
-        width: 100%;
-        overflow: auto;
-      }
-      #manager-table {
-        height: 100%;
+        gap: 10px;
       }
       .panel {
         display: flex;
@@ -111,25 +107,164 @@
       .panel-title {
         font-size: 1.05rem;
         font-weight: 600;
-        padding: 6px 4px 8px 4px;
+        padding: 2px 4px 0 4px;
       }
-      .history-table-wrap {
-        min-height: 180px;
-        height: 42%;
+      .summary-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 8px;
       }
+      .summary-card {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        padding: 10px 12px;
+        border: 1px solid var(--material-medium);
+        border-radius: 8px;
+        background: color-mix(in srgb, var(--material-background) 95%, white);
+      }
+      .summary-card-label {
+        font-size: 12px;
+        color: var(--text-color-deemphasized);
+      }
+      .summary-card-value {
+        font-size: 20px;
+        font-weight: 700;
+        line-height: 1.2;
+      }
+      .workspace-controls {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+      .workspace-controls input,
+      .workspace-controls select {
+        border: 1px solid var(--material-medium);
+        border-radius: 8px;
+        background: color-mix(in srgb, var(--material-background) 96%, white);
+        color: inherit;
+        min-height: 34px;
+        padding: 0 10px;
+        box-sizing: border-box;
+      }
+      .workspace-controls input {
+        flex: 1;
+      }
+      .workspace-controls select {
+        min-width: 160px;
+      }
+      .table-wrap {
+        flex: 1;
+        min-height: 0;
+        display: flex;
+      }
+      #table-container,
       #history-table-container {
         height: 100%;
         width: 100%;
         overflow: auto;
       }
+      #manager-table,
       #manager-history-table {
         height: 100%;
+      }
+      .workspace-status-card {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        padding: 12px;
+        border: 1px solid var(--material-medium);
+        border-radius: 8px;
+        background: color-mix(in srgb, var(--material-background) 95%, white);
+      }
+      .workspace-status-head {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+      }
+      .workspace-status-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 56px;
+        height: 28px;
+        padding: 0 10px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 700;
+        line-height: 1;
+        box-sizing: border-box;
+      }
+      .workspace-status-card[data-state="clean"] .workspace-status-badge {
+        background: rgba(70, 160, 90, 0.16);
+        color: #51b16c;
+      }
+      .workspace-status-card[data-state="push"] .workspace-status-badge {
+        background: rgba(78, 135, 245, 0.16);
+        color: #6da6ff;
+      }
+      .workspace-status-card[data-state="pull"] .workspace-status-badge {
+        background: rgba(74, 192, 188, 0.16);
+        color: #53d0c6;
+      }
+      .workspace-status-card[data-state="conflict"] .workspace-status-badge {
+        background: rgba(235, 105, 105, 0.18);
+        color: #ff8e8e;
+      }
+      .workspace-status-card[data-state="missing"] .workspace-status-badge,
+      .workspace-status-card[data-state="tombstoned"] .workspace-status-badge {
+        background: rgba(214, 153, 61, 0.18);
+        color: #f0bc68;
+      }
+      .workspace-status-main {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        min-width: 0;
+      }
+      .workspace-status-note {
+        font-size: 15px;
+        font-weight: 700;
+        line-height: 1.35;
+        word-break: break-word;
+      }
+      .workspace-status-desc {
+        color: var(--text-color-deemphasized);
+        line-height: 1.45;
+        white-space: pre-wrap;
+      }
+      .workspace-status-meta {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px 12px;
+        font-size: 12px;
+        line-height: 1.45;
+      }
+      .workspace-status-meta-item {
+        min-width: 0;
+      }
+      .workspace-status-meta-label {
+        display: block;
+        color: var(--text-color-deemphasized);
+        margin-bottom: 2px;
+      }
+      .workspace-status-meta-value {
+        display: block;
+        word-break: break-word;
+      }
+      .history-table-wrap {
+        min-height: 190px;
+        height: 36%;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
       }
       .history-preview-wrap {
         flex: 1;
         min-height: 0;
         display: flex;
         flex-direction: column;
+        gap: 6px;
       }
       #history-preview {
         flex: 1;
@@ -142,9 +277,16 @@
         background: color-mix(in srgb, var(--material-background) 92%, white);
         white-space: pre-wrap;
         word-break: break-word;
-        font-family: SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+        font-family:
+          SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
         font-size: 12px;
         line-height: 1.45;
+      }
+      .footer-container {
+        justify-content: flex-start;
+        padding: 10px;
+        gap: 8px;
+        flex-wrap: wrap;
       }
     </style>
   </head>
@@ -152,11 +294,67 @@
     <div class="viewport-container">
       <div id="list-container" class="viewport list-viewport panel">
         <div class="panel-title" data-l10n-id="notesTitle"></div>
-        <div id="table-container"></div>
+        <div id="workspace-summary" class="summary-grid">
+          <div class="summary-card">
+            <div id="summary-total-label" class="summary-card-label"></div>
+            <div id="summary-total-value" class="summary-card-value">0</div>
+          </div>
+          <div class="summary-card">
+            <div id="summary-clean-label" class="summary-card-label"></div>
+            <div id="summary-clean-value" class="summary-card-value">0</div>
+          </div>
+          <div class="summary-card">
+            <div id="summary-push-label" class="summary-card-label"></div>
+            <div id="summary-push-value" class="summary-card-value">0</div>
+          </div>
+          <div class="summary-card">
+            <div id="summary-pull-label" class="summary-card-label"></div>
+            <div id="summary-pull-value" class="summary-card-value">0</div>
+          </div>
+          <div class="summary-card">
+            <div id="summary-conflict-label" class="summary-card-label"></div>
+            <div id="summary-conflict-value" class="summary-card-value">0</div>
+          </div>
+          <div class="summary-card">
+            <div id="summary-issue-label" class="summary-card-label"></div>
+            <div id="summary-issue-value" class="summary-card-value">0</div>
+          </div>
+        </div>
+        <div class="workspace-controls">
+          <input id="sync-search" type="search" />
+          <select id="sync-filter"></select>
+        </div>
+        <div class="table-wrap">
+          <div id="table-container"></div>
+        </div>
       </div>
       <div id="history-panel" class="viewport history-viewport panel">
-        <div class="panel-title" data-l10n-id="historyTitle"></div>
+        <div id="workspace-state-title" class="panel-title"></div>
+        <div
+          id="workspace-status-card"
+          class="workspace-status-card"
+          data-state="clean"
+        >
+          <div class="workspace-status-head">
+            <div
+              id="workspace-status-badge"
+              class="workspace-status-badge"
+            ></div>
+            <div class="workspace-status-main">
+              <div
+                id="workspace-status-note"
+                class="workspace-status-note"
+              ></div>
+              <div
+                id="workspace-status-desc"
+                class="workspace-status-desc"
+              ></div>
+            </div>
+          </div>
+          <div id="workspace-status-meta" class="workspace-status-meta"></div>
+        </div>
         <div class="history-table-wrap">
+          <div class="panel-title" data-l10n-id="historyTitle"></div>
           <div id="history-table-container"></div>
         </div>
         <div class="history-preview-wrap">
@@ -167,11 +365,11 @@
     </div>
     <div
       class="footer-container"
-      style="justify-content: flex-start; padding: 10px; gap: 8px"
       xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
     >
       <button id="refresh" data-l10n-id="refresh"></button>
       <button id="sync" data-l10n-id="sync"></button>
+      <button id="resolveDiff"></button>
       <button id="unSync" data-l10n-id="unSync"></button>
       <button id="restoreManaged"></button>
       <button id="rebindManaged"></button>

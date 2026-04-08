@@ -1,11 +1,13 @@
 import { config } from "../../../../../package.json";
 import { getString } from "../../../../utils/locale";
+import { getErrorMessage, logError } from "../../../../utils/errorUtils";
 import { getPref, setPref } from "../../../../utils/prefs";
 import { formatPath } from "../../../../utils/str";
 import { openTemplatePicker } from "../../../../utils/templatePicker";
 import { migrateObsidianFileNameTemplatePref } from "../../../obsidian/fileNameTemplate";
 import {
   DEFAULT_CHILD_NOTE_TAGS,
+  getDefaultChildNoteTagsText,
   OBSIDIAN_CHILD_NOTE_PROMPT_SELECT_INPUT_ID,
   OBSIDIAN_CHILD_NOTE_PROMPT_SELECT_PREF,
   OBSIDIAN_CHILD_NOTE_TAGS_INPUT_ID,
@@ -18,8 +20,10 @@ import {
   deriveObsidianPathDefaults,
   getBooleanPrefOrDefault,
   getStringPrefOrDefault,
+  normalizeObsidianCollectionFolderMode,
   normalizeObsidianSyncScope,
   normalizeObsidianUpdateStrategy,
+  OBSIDIAN_COLLECTION_FOLDER_MODE_PREF,
   OBSIDIAN_DASHBOARD_AUTO_SETUP_PREF,
   OBSIDIAN_DASHBOARD_AUTO_SETUP_INPUT_ID,
   OBSIDIAN_DASHBOARD_DIR_INPUT_ID,
@@ -567,6 +571,17 @@ function refreshObsidianPrefsUI() {
       prefDoc.defaultView?.setTimeout(() => {
         refreshObsidianPrefsUI();
       }, 80);
+    } else {
+      try {
+        const { logAndHint } = require("../../../../utils/errorUtils");
+        logAndHint(
+          "Obsidian preferences",
+          "Root element not found after 8 retries",
+          "Failed to load Obsidian settings panel. Please reopen preferences.",
+        );
+      } catch (_ignored) {
+        // errorUtils unavailable
+      }
     }
     return;
   }
@@ -596,7 +611,7 @@ function refreshObsidianPrefsUI() {
 
     const childNoteTags = getStringPrefOrDefault(
       OBSIDIAN_CHILD_NOTE_TAGS_PREF,
-      DEFAULT_CHILD_NOTE_TAGS.join(", "),
+      getDefaultChildNoteTagsText(),
     );
     if (!cleanInline(String(getPref(OBSIDIAN_CHILD_NOTE_TAGS_PREF) || ""))) {
       setPref(OBSIDIAN_CHILD_NOTE_TAGS_PREF, childNoteTags);
@@ -632,6 +647,14 @@ function refreshObsidianPrefsUI() {
         OBSIDIAN_UPDATE_STRATEGY_PREF,
         normalizeObsidianUpdateStrategy(
           String(getPref(OBSIDIAN_UPDATE_STRATEGY_PREF) || ""),
+        ),
+      );
+    }
+    if (!cleanInline(String(getPref(OBSIDIAN_COLLECTION_FOLDER_MODE_PREF) || ""))) {
+      setPref(
+        OBSIDIAN_COLLECTION_FOLDER_MODE_PREF,
+        normalizeObsidianCollectionFolderMode(
+          String(getPref(OBSIDIAN_COLLECTION_FOLDER_MODE_PREF) || ""),
         ),
       );
     }
@@ -684,9 +707,9 @@ function refreshObsidianPrefsUI() {
       }, 0);
     }
   } catch (error) {
-    ztoolkit.log("[obsidian prefs refresh]", error);
+    logError("Obsidian preferences refresh", error);
     root.textContent =
-      cleanInline((error as Error)?.message || "") ||
+      cleanInline(getErrorMessage(error)) ||
       uiText(
         "Obsidian 设置页初始化失败，请查看插件日志。",
         "Failed to initialize Obsidian settings. Check plugin logs.",

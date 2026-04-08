@@ -1,6 +1,10 @@
 import { config } from "../../package.json";
 import { setPref } from "../../src/utils/prefs";
-import { setObsidianItemNoteMap } from "../../src/modules/obsidian/settings";
+import {
+  DEFAULT_MANAGED_FRONTMATTER_FIELDS,
+  setManagedFrontmatterFields,
+  setObsidianItemNoteMap,
+} from "../../src/modules/obsidian/settings";
 import { resetManagedPathRegistryState } from "../../src/modules/obsidian/managedPathRegistry";
 
 const GENERATED_BLOCK_START = `<!-- ${config.addonRef}:BEGIN GENERATED -->`;
@@ -53,11 +57,13 @@ export async function createManagedObsidianNote() {
 export function resetManagedObsidianPrefs() {
   setObsidianItemNoteMap({});
   resetManagedPathRegistryState();
+  setManagedFrontmatterFields(DEFAULT_MANAGED_FRONTMATTER_FIELDS);
   setPref("obsidian.dashboardDir", "");
   setPref("obsidian.dashboardAutoSetup", true);
   setPref("obsidian.vaultRoot", "");
   setPref("obsidian.notesDir", "");
   setPref("obsidian.assetsDir", "");
+  setPref("obsidian.collectionFolderMode", "none");
   setPref("obsidian.includeAnnotations", true);
 }
 

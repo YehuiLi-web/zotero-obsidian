@@ -2,6 +2,7 @@ import { getString } from "../../../../utils/locale";
 import { getPref } from "../../../../utils/prefs";
 import {
   DEFAULT_CHILD_NOTE_TAGS,
+  getDefaultChildNoteTagsText,
   OBSIDIAN_CHILD_NOTE_PROMPT_SELECT_INPUT_ID,
   OBSIDIAN_CHILD_NOTE_PROMPT_SELECT_PREF,
   OBSIDIAN_CHILD_NOTE_TAGS_INPUT_ID,
@@ -41,6 +42,7 @@ import {
   hasTemplateByName,
   ManagedFrontmatterOptionGroup,
   ManagedFrontmatterOptionKey,
+  normalizeObsidianCollectionFolderMode,
   normalizeObsidianSyncScope,
   normalizeObsidianUpdateStrategy,
   resolveManagedFrontmatterPreset,
@@ -51,6 +53,7 @@ import {
   OBSIDIAN_DASHBOARD_AUTO_SETUP_INPUT_ID,
   OBSIDIAN_DASHBOARD_AUTO_SETUP_PREF,
   OBSIDIAN_DASHBOARD_DIR_INPUT_ID,
+  OBSIDIAN_COLLECTION_FOLDER_MODE_PREF,
   OBSIDIAN_FILE_NAME_TEMPLATE_INPUT_ID,
   OBSIDIAN_FRONTMATTER_FIELD_LIST_ID,
   OBSIDIAN_FRONTMATTER_SUMMARY_ID,
@@ -92,6 +95,7 @@ import {
   OBSIDIAN_ASSETS_DIR_HINT_ID,
   OBSIDIAN_ASSETS_DIR_INPUT_ID,
   OBSIDIAN_AUTO_SYNC_INPUT_ID,
+  OBSIDIAN_COLLECTION_FOLDERS_INPUT_ID,
   OBSIDIAN_CONNECTION_STATUS_ID,
   OBSIDIAN_CONNECTION_TEST_BUTTON_ID,
   OBSIDIAN_CONNECTION_TEST_RESULT_ID,
@@ -559,13 +563,17 @@ export function getObsidianSettingsShellMarkup(prefDoc: Document) {
     updateStrategy: normalizeObsidianUpdateStrategy(
       String(getPref(OBSIDIAN_UPDATE_STRATEGY_PREF) || ""),
     ),
+    collectionFoldersEnabled:
+      normalizeObsidianCollectionFolderMode(
+        String(getPref(OBSIDIAN_COLLECTION_FOLDER_MODE_PREF) || ""),
+      ) !== "none",
     autoSync: getBooleanPrefOrDefault("obsidian.autoSync", true),
     watchFiles: getBooleanPrefOrDefault("obsidian.watchFiles", true),
     openAfterSync: getBooleanPrefOrDefault("obsidian.openAfterSync", true),
     revealAfterSync: getBooleanPrefOrDefault("obsidian.revealAfterSync", false),
     childNoteTags: getStringPrefOrDefault(
       OBSIDIAN_CHILD_NOTE_TAGS_PREF,
-      DEFAULT_CHILD_NOTE_TAGS.join(", "),
+      getDefaultChildNoteTagsText(),
     ),
     childNotePrompt: getBooleanPrefOrDefault(
       OBSIDIAN_CHILD_NOTE_PROMPT_SELECT_PREF,
@@ -630,6 +638,7 @@ export function getObsidianSettingsShellMarkup(prefDoc: Document) {
       vaultRootInputId: OBSIDIAN_VAULT_ROOT_INPUT_ID,
       notesDirInputId: OBSIDIAN_NOTES_DIR_INPUT_ID,
       assetsDirInputId: OBSIDIAN_ASSETS_DIR_INPUT_ID,
+      collectionFoldersInputId: OBSIDIAN_COLLECTION_FOLDERS_INPUT_ID,
       connectionTestButtonId: OBSIDIAN_CONNECTION_TEST_BUTTON_ID,
       connectionTestResultId: OBSIDIAN_CONNECTION_TEST_RESULT_ID,
       vaultRootHintId: OBSIDIAN_VAULT_ROOT_HINT_ID,
@@ -740,6 +749,12 @@ export function hydrateStaticObsidianPrefsControls() {
   setPrefElementValue(OBSIDIAN_NOTES_DIR_INPUT_ID, notesDir);
   setPrefElementValue(OBSIDIAN_ASSETS_DIR_INPUT_ID, assetsDir);
   setPrefElementValue(OBSIDIAN_DASHBOARD_DIR_INPUT_ID, dashboardDir);
+  setPrefElementChecked(
+    OBSIDIAN_COLLECTION_FOLDERS_INPUT_ID,
+    normalizeObsidianCollectionFolderMode(
+      String(getPref(OBSIDIAN_COLLECTION_FOLDER_MODE_PREF) || ""),
+    ) !== "none",
+  );
   setPrefElementValue(
     OBSIDIAN_FILE_NAME_TEMPLATE_INPUT_ID,
     getManagedFileNamePattern(),
@@ -816,7 +831,7 @@ export function hydrateStaticObsidianPrefsControls() {
     OBSIDIAN_CHILD_NOTE_TAGS_INPUT_ID,
     getStringPrefOrDefault(
       OBSIDIAN_CHILD_NOTE_TAGS_PREF,
-      DEFAULT_CHILD_NOTE_TAGS.join(", "),
+      getDefaultChildNoteTagsText(),
     ),
   );
   setPrefRadioValue(

@@ -1,5 +1,8 @@
-import { fileExists } from "../../../../utils/str";
-import { writeObsidianConnectionTestFile } from "../../../obsidian/settings";
+import { getErrorMessage, logError } from "../../../../utils/errorUtils";
+import {
+  validateObsidianPaths,
+  writeObsidianConnectionTestFile,
+} from "../../../obsidian/settings";
 import { cleanInline } from "../../../obsidian/shared";
 import { obsidianPrefsState } from "./state";
 import {
@@ -58,7 +61,8 @@ export function renderConnectionStatus() {
 
 export async function updateConnectionDiagnostics() {
   const requestId = ++obsidianPrefsState.connectionRequest;
-  const { appPath, vaultRoot, notesDir } = getObsidianResolvedPaths();
+  const resolvedPaths = getObsidianResolvedPaths();
+  const { appPath, vaultRoot, notesDir } = resolvedPaths;
 
   obsidianPrefsState.connection.status = "checking";
   obsidianPrefsState.connection.title = uiText(
@@ -68,10 +72,7 @@ export async function updateConnectionDiagnostics() {
   obsidianPrefsState.connection.detail = "";
   renderConnectionStatus();
 
-  const [appExists, vaultExists] = await Promise.all([
-    fileExists(appPath),
-    fileExists(vaultRoot),
-  ]);
+  const pathValidation = await validateObsidianPaths(resolvedPaths);
 
   if (requestId !== obsidianPrefsState.connectionRequest) {
     return;
@@ -84,7 +85,7 @@ export async function updateConnectionDiagnostics() {
       "先设置 Vault 根目录或文献笔记目录。",
       "Set a vault root or notes folder first.",
     );
-  } else if (vaultRoot && !vaultExists) {
+  } else if (vaultRoot && !pathValidation.vaultRootExists) {
     obsidianPrefsState.connection.status = "error";
     obsidianPrefsState.connection.title = uiText(
       "Vault 不可用",
@@ -94,7 +95,7 @@ export async function updateConnectionDiagnostics() {
       "当前 Vault 路径不存在。",
       "The configured vault path does not exist.",
     );
-  } else if (appPath && !appExists) {
+  } else if (appPath && !pathValidation.appPathExists) {
     obsidianPrefsState.connection.status = "warning";
     obsidianPrefsState.connection.title = uiText(
       "应用路径异常",
@@ -139,9 +140,18 @@ export async function testObsidianConnection() {
       `Wrote ${result.fileName}.`,
     );
   } catch (error) {
+    logError("Obsidian connection test", error);
     obsidianPrefsState.connectionTest.status = "error";
     obsidianPrefsState.connectionTest.message =
-      cleanInline((error as Error)?.message || "") ||
+      cleanInline(
+        getErrorMessage(
+          error,
+          uiText(
+            "测试失败，请检查路径和权限。",
+            "Connection test failed. Check the path and permissions.",
+          ),
+        ),
+      ) ||
       uiText(
         "测试失败，请检查路径和权限。",
         "Connection test failed. Check the path and permissions.",

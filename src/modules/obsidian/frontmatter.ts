@@ -1,4 +1,5 @@
 import YAML = require("yamljs");
+import { logError } from "../../utils/errorUtils";
 import {
   getManagedFrontmatterFields,
   hasManagedFrontmatterField,
@@ -18,6 +19,7 @@ import {
 
 const MANAGED_NOTE_SCHEMA_VERSION = 1;
 const MANAGED_FRONTMATTER_SYSTEM_TAGS = new Set(["literature", "zotero"]);
+const MANAGED_LIBRARY_ID_CACHE = new Map<string, number>();
 const MANAGED_FRONTMATTER_RESERVED_KEYS = new Set([
   "title",
   "aliases",
@@ -115,6 +117,144 @@ function normalizeManagedRating(value: unknown) {
   return Math.min(rounded, 5);
 }
 
+function getManagedFrontmatterBridge(
+  meta: Record<string, any> | null | undefined,
+) {
+  const normalizedMeta = normalizeFrontmatterObject(meta);
+  const zoteroKey = cleanInline(
+    String(
+      firstValue(
+        normalizedMeta.zotero_key,
+        normalizedMeta.$itemKey,
+        normalizedMeta.item_key,
+      ) || "",
+    ),
+  );
+  const noteKey = cleanInline(
+    String(
+      firstValue(
+        normalizedMeta.zotero_note_key,
+        normalizedMeta.$noteKey,
+        normalizedMeta.note_key,
+        normalizedMeta.$itemKey,
+      ) || "",
+    ),
+  );
+  const legacyManaged = Boolean(normalizedMeta.bridge_managed);
+  const hasDualKeys = Boolean(zoteroKey && noteKey);
+  return {
+    zoteroKey,
+    noteKey,
+    legacyManaged,
+    hasDualKeys,
+    isManaged: hasDualKeys || legacyManaged,
+  };
+}
+
+function resolveManagedFrontmatterLibraryID(
+  meta: Record<string, any> | null | undefined,
+  options: {
+    zoteroKey?: string;
+    noteKey?: string;
+  } = {},
+) {
+  const normalizedMeta = normalizeFrontmatterObject(meta);
+  const explicitLibraryID = Number(
+    firstValue(
+      normalizedMeta.$libraryID,
+      normalizedMeta.libraryID,
+      normalizedMeta.library_id,
+    ) || 0,
+  );
+  if (Number.isFinite(explicitLibraryID) && explicitLibraryID > 0) {
+    return explicitLibraryID;
+  }
+
+  const bridge = getManagedFrontmatterBridge(normalizedMeta);
+  const zoteroKey = cleanInline(options.zoteroKey || bridge.zoteroKey);
+  const noteKey = cleanInline(options.noteKey || bridge.noteKey);
+  if (!zoteroKey && !noteKey) {
+    return 0;
+  }
+
+  const cacheKey = `${zoteroKey.toLowerCase()}::${noteKey.toLowerCase()}`;
+  if (MANAGED_LIBRARY_ID_CACHE.has(cacheKey)) {
+    return MANAGED_LIBRARY_ID_CACHE.get(cacheKey) || 0;
+  }
+
+  const libraries =
+    typeof Zotero?.Libraries?.getAll === "function" ? Zotero.Libraries.getAll() : [];
+  for (const library of libraries) {
+    const libraryID = Number((library as { libraryID?: number })?.libraryID || 0);
+    if (!libraryID) {
+      continue;
+    }
+
+    if (noteKey) {
+      const noteItem = Zotero.Items.getByLibraryAndKey(
+        libraryID,
+        noteKey,
+      ) as Zotero.Item | false;
+      if (noteItem && noteItem.isNote()) {
+        if (!zoteroKey) {
+          MANAGED_LIBRARY_ID_CACHE.set(cacheKey, libraryID);
+          return libraryID;
+        }
+        const parentID = Number(noteItem.parentID || 0);
+        const topItem =
+          noteItem.parentItem?.isRegularItem()
+            ? noteItem.parentItem
+            : parentID
+              ? (Zotero.Items.get(parentID) as Zotero.Item | false)
+              : false;
+        if (topItem && topItem.isRegularItem() && cleanInline(topItem.key) === zoteroKey) {
+          MANAGED_LIBRARY_ID_CACHE.set(cacheKey, libraryID);
+          return libraryID;
+        }
+      }
+    }
+
+    if (zoteroKey) {
+      const topItem = Zotero.Items.getByLibraryAndKey(
+        libraryID,
+        zoteroKey,
+      ) as Zotero.Item | false;
+      if (topItem && topItem.isRegularItem()) {
+        MANAGED_LIBRARY_ID_CACHE.set(cacheKey, libraryID);
+        return libraryID;
+      }
+    }
+  }
+
+  return 0;
+}
+
+function isManagedFrontmatterBridge(
+  meta: Record<string, any> | null | undefined,
+  options: {
+    zoteroKey?: string;
+    noteKey?: string;
+  } = {},
+) {
+  const bridge = getManagedFrontmatterBridge(meta);
+  if (!bridge.isManaged) {
+    return false;
+  }
+  const expectedZoteroKey = cleanInline(options.zoteroKey);
+  if (
+    expectedZoteroKey &&
+    bridge.zoteroKey &&
+    bridge.zoteroKey !== expectedZoteroKey
+  ) {
+    return false;
+  }
+  const expectedNoteKey = cleanInline(options.noteKey);
+  if (expectedNoteKey && bridge.noteKey && bridge.noteKey !== expectedNoteKey) {
+    return false;
+  }
+  return true;
+}
+
 function buildFrontmatter(frontmatter: Record<string, any>) {
   const serializeScalar = (value: unknown) => {
     if (typeof value === "number" || typeof value === "boolean") {
@@ -200,16 +340,27 @@ function buildManagedFrontmatterData(
     getManagedFrontmatterNonSystemTags(zoteroTagsList),
   );
   const frontmatter: Record<string, any> = {
-    title: cleanInline(context.title),
     zotero_key: cleanInline(context.qnkey),
     zotero_note_key: cleanInline(noteItem.key),
-    tags,
-    reading_status: status || "inbox",
-    bridge_managed: true,
-    bridge_schema: MANAGED_NOTE_SCHEMA_VERSION,
-    $version: noteItem.version,
-    $libraryID: noteItem.libraryID,
   };
+  if (selectedFields.has("libraryId")) {
+    frontmatter.$libraryID = noteItem.libraryID;
+  }
+  if (selectedFields.has("noteVersion")) {
+    frontmatter.$version = noteItem.version;
+  }
+  if (selectedFields.has("title")) {
+    const title = cleanInline(context.title);
+    if (title) {
+      frontmatter.title = title;
+    }
+  }
+  if (selectedFields.has("readingStatus")) {
+    frontmatter.reading_status = status || "inbox";
+  }
+  if (selectedFields.has("obsidianTags") && tags.length) {
+    frontmatter.tags = tags;
+  }
   let citationKeyValue = cleanInline(
     String(
       firstValue(
@@ -228,14 +379,15 @@ function buildManagedFrontmatterData(
         getFieldSafe(topItem, "key"),
     );
   }
-  if (citationKeyValue) {
+  if (citationKeyValue && selectedFields.has("citationKey")) {
     frontmatter.citation_key = citationKeyValue;
-    frontmatter.citekey = citationKeyValue;
   }
-  if (selectedFields.has("titleTranslation")) {
-    const titleTranslation = cleanInline(context.titleTranslation);
-    if (titleTranslation) {
+  const titleTranslation = cleanInline(context.titleTranslation);
+  if (titleTranslation) {
+    if (selectedFields.has("aliases")) {
       frontmatter.aliases = [titleTranslation];
+    }
+    if (selectedFields.has("titleTranslation")) {
       frontmatter.title_translation = titleTranslation;
     }
   }
@@ -267,7 +419,6 @@ function buildManagedFrontmatterData(
       frontmatter.doi = doi;
     }
   }
-  // `citation_key` is always written when available; `selectedFields` no longer gates it.
   if (selectedFields.has("publication")) {
     const publication = cleanInline(
       firstValue(
@@ -332,10 +483,7 @@ function parseMarkdownFrontmatter(markdown: string) {
   try {
     return normalizeFrontmatterObject(YAML.parse(match[1]));
   } catch (e) {
-    const toolkit = (globalThis as any).ztoolkit;
-    if (toolkit && typeof toolkit.log === "function") {
-      toolkit.log("[ObsidianBridge] failed to parse managed frontmatter", e);
-    }
+    logError("Parse managed frontmatter", e);
     return {};
   }
 }
@@ -352,10 +500,10 @@ function mergeManagedFrontmatter(
     }
   }
   merged.aliases = mergeFrontmatterLists(
-    hasManagedFrontmatterField("titleTranslation")
+    hasManagedFrontmatterField("aliases")
       ? preservedFrontmatter.aliases
       : [],
-    hasManagedFrontmatterField("titleTranslation")
+    hasManagedFrontmatterField("aliases")
       ? generatedFrontmatter.aliases
       : [],
   );
@@ -365,16 +513,23 @@ function mergeManagedFrontmatter(
   // Preserve only user-added tags from Obsidian (not from Zotero or system).
   // This ensures that when a tag is deleted in Zotero, it is also removed
   // from the merged `tags` field, while user-only tags are kept.
-  const existingTags = getManagedFrontmatterTags(preservedFrontmatter.tags);
-  const zoteroSourceTags = new Set(
-    getManagedFrontmatterTags(preservedFrontmatter.zotero_tags),
-  );
-  const userOnlyTags = existingTags.filter(
-    (tag) =>
-      !MANAGED_FRONTMATTER_SYSTEM_TAGS.has(tag.toLowerCase()) &&
-      !zoteroSourceTags.has(tag),
-  );
-  merged.tags = mergeFrontmatterLists(generatedFrontmatter.tags, userOnlyTags);
+  if (hasManagedFrontmatterField("obsidianTags")) {
+    const existingTags = getManagedFrontmatterTags(preservedFrontmatter.tags);
+    const zoteroSourceTags = new Set(
+      getManagedFrontmatterTags(preservedFrontmatter.zotero_tags),
+    );
+    const userOnlyTags = existingTags.filter(
+      (tag) =>
+        !MANAGED_FRONTMATTER_SYSTEM_TAGS.has(tag.toLowerCase()) &&
+        !zoteroSourceTags.has(tag),
+    );
+    merged.tags = mergeFrontmatterLists(generatedFrontmatter.tags, userOnlyTags);
+  } else {
+    delete merged.tags;
+  }
+  if (!Array.isArray(merged.tags) || !merged.tags.length) {
+    delete merged.tags;
+  }
   return merged;
 }
 
@@ -386,6 +541,9 @@ export {
   getManagedFrontmatterTags,
   getManagedFrontmatterNonSystemTags,
   normalizeManagedRating,
+  getManagedFrontmatterBridge,
+  resolveManagedFrontmatterLibraryID,
+  isManagedFrontmatterBridge,
   buildFrontmatter,
   buildManagedFrontmatterData,
   normalizeFrontmatterObject,

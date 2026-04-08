@@ -1,4 +1,5 @@
 import { config } from "../../../package.json";
+import { getString } from "../../utils/locale";
 import { getPref, setPref } from "../../utils/prefs";
 import {
   getBooleanPrefOrDefault,
@@ -30,6 +31,18 @@ interface ChildNoteBridgeConfig {
   promptSelect: boolean;
 }
 
+function getDefaultChildNoteTagsText() {
+  const fallback = DEFAULT_CHILD_NOTE_TAGS.join(", ");
+  const localized = cleanInline(getString("obsidian-childNotes-defaultTags"));
+  if (
+    !localized ||
+    localized === "ObsidianBridge-obsidian-childNotes-defaultTags"
+  ) {
+    return fallback;
+  }
+  return localized;
+}
+
 function normalizeChildNoteTag(tag: string) {
   return cleanInline(tag).replace(/^#+/, "").toLowerCase();
 }
@@ -46,7 +59,7 @@ function getChildNoteBridgeConfig(): ChildNoteBridgeConfig {
     matchTags: parseChildNoteTags(
       getStringPrefOrDefault(
         OBSIDIAN_CHILD_NOTE_TAGS_PREF,
-        DEFAULT_CHILD_NOTE_TAGS.join(", "),
+        getDefaultChildNoteTagsText(),
       ),
     ),
     promptSelect: getBooleanPrefOrDefault(
@@ -132,6 +145,7 @@ export {
   OBSIDIAN_CHILD_NOTE_PROMPT_SELECT_PREF,
   OBSIDIAN_CHILD_NOTE_EXCLUDE_MAP_PREF,
   DEFAULT_CHILD_NOTE_TAGS,
+  getDefaultChildNoteTagsText,
   OBSIDIAN_CHILD_NOTE_TAGS_INPUT_ID,
   OBSIDIAN_CHILD_NOTE_PROMPT_SELECT_INPUT_ID,
   ChildNoteBridgeConfig,

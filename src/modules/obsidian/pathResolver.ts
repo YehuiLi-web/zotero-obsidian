@@ -2,6 +2,9 @@ import { safeLog } from "../../utils/log";
 import { getPref } from "../../utils/prefs";
 import { fileExists, formatPath, jointPath } from "../../utils/str";
 import {
+  resolveManagedNotesDirForItem,
+} from "./collectionFolders";
+import {
   chooseManagedFrontmatterMatch,
   getManagedFrontmatterMatchRank,
   readManagedFrontmatterIdentity,
@@ -22,7 +25,11 @@ import {
   getManagedObsidianFileName,
   getManagedObsidianFileNameFresh,
 } from "./managed";
-import { getCitationKeyForItem } from "./paths";
+import { getCitationKeyForItem, isSamePath } from "./paths";
+import {
+  normalizeObsidianCollectionFolderMode,
+  OBSIDIAN_COLLECTION_FOLDER_MODE_PREF,
+} from "./settings";
 import type {
   ManagedPathMode,
   ManagedPathResolution,
@@ -35,17 +42,6 @@ type ResolveManagedPathOptions = {
   includeTemplateFallback?: boolean;
   refreshSyncStatus?: boolean;
 };
-
-function isSameComparablePath(left: string, right: string) {
-  const normalizedLeft = formatPath(left);
-  const normalizedRight = formatPath(right);
-  if (!normalizedLeft || !normalizedRight) {
-    return false;
-  }
-  return Zotero.isWin
-    ? normalizedLeft.toLowerCase() === normalizedRight.toLowerCase()
-    : normalizedLeft === normalizedRight;
-}
 
 function getManagedScopeRoot(settings?: Partial<ObsidianSettings> | null) {
   return formatPath(
@@ -63,14 +59,48 @@ function getManagedNotesDir(settings?: Partial<ObsidianSettings> | null) {
   );
 }
 
+function getManagedCollectionFolderMode(
+  settings?: Partial<ObsidianSettings> | null,
+) {
+  return normalizeObsidianCollectionFolderMode(
+    String(
+      settings?.collectionFolders?.mode ??
+        getPref(OBSIDIAN_COLLECTION_FOLDER_MODE_PREF) ??
+        "",
+    ),
+  );
+}
+
+function getManagedTopItem(noteItem: Zotero.Item) {
+  if (!noteItem?.isNote()) {
+    return null;
+  }
+  if (noteItem.parentItem?.isRegularItem()) {
+    return noteItem.parentItem;
+  }
+  if (!noteItem.parentID) {
+    return null;
+  }
+  const parentItem = Zotero.Items.get(noteItem.parentID);
+  return parentItem?.isRegularItem() ? parentItem : null;
+}
+
 async function getExpectedManagedTemplatePath(
   noteItem: Zotero.Item,
   settings?: Partial<ObsidianSettings> | null,
 ) {
-  const notesDir = getManagedNotesDir(settings);
-  if (!notesDir) {
+  const notesDirRoot = getManagedNotesDir(settings);
+  if (!notesDirRoot) {
     return "";
   }
+  const topItem = getManagedTopItem(noteItem);
+  const notesDir = topItem
+    ? await resolveManagedNotesDirForItem(
+        topItem,
+        notesDirRoot,
+        getManagedCollectionFolderMode(settings),
+      )
+    : notesDirRoot;
   const filename =
     (await getManagedObsidianFileNameFresh(noteItem)) ||
     getManagedObsidianFileName(noteItem) ||
@@ -86,7 +116,7 @@ function getManagedPathModeForPath(
   if (currentMode === "preserve-user-path") {
     return currentMode;
   }
-  if (templatePath && isSameComparablePath(resolvedPath, templatePath)) {
+  if (templatePath && isSamePath(resolvedPath, templatePath)) {
     return "template-managed" as ManagedPathMode;
   }
   return "preserve-user-path" as ManagedPathMode;
@@ -138,6 +168,8 @@ async function rememberManagedResolvedPath(
     settings?: Partial<ObsidianSettings> | null;
     pathMode?: ManagedPathMode;
     refreshSyncStatus?: boolean;
+    frontmatterMeta?: Record<string, any> | null;
+    fileLastModified?: number;
   } = {},
 ) {
   if (!noteItem?.isNote() || !noteItem.parentItem?.isRegularItem()) {
@@ -171,7 +203,11 @@ async function rememberManagedResolvedPath(
   });
 
   if (await fileExists(normalizedTargetPath)) {
-    await refreshFrontmatterIndexEntry(normalizedTargetPath);
+    await refreshFrontmatterIndexEntry(
+      normalizedTargetPath,
+      options.frontmatterMeta,
+      options.fileLastModified,
+    );
     if (options.refreshSyncStatus !== false) {
       await updateManagedSyncStatusForPath(noteItem, normalizedTargetPath);
     }
@@ -495,7 +531,7 @@ async function resolveManagedSyncTargetPath(
   if (
     resolution.pathMode !== "template-managed" ||
     !templatePath ||
-    isSameComparablePath(resolution.path, templatePath)
+    isSamePath(resolution.path, templatePath)
   ) {
     return resolution;
   }

@@ -9,9 +9,11 @@ import {
   getAttachmentRelativeDir,
   getDefaultDashboardDir,
   getLastPathSegment,
+  normalizeComparablePath,
 } from "./paths";
 import { cleanInline } from "./shared";
 import {
+  OBSIDIAN_COLLECTION_FOLDER_MODE_PREF,
   DEFAULT_MANAGED_FRONTMATTER_FIELDS,
   DEFAULT_OBSIDIAN_FILE_NAME_TEMPLATE,
   DEFAULT_OBSIDIAN_ITEM_TEMPLATE,
@@ -39,10 +41,13 @@ import {
 import type {
   ManagedFrontmatterOptionKey,
   ManagedFrontmatterPresetId,
+  ObsidianCollectionFolderMode,
   ManagedNoteContentConfig,
   MissingMetadataTranslationConfig,
   ObsidianDetectedVault,
+  ObsidianPathValidation,
   ObsidianPathDefaults,
+  ObsidianResolvedPaths,
   ObsidianSettings,
   ObsidianSyncScope,
   ObsidianUpdateStrategy,
@@ -108,6 +113,17 @@ export function normalizeObsidianUpdateStrategy(
       return cleanInline(value) as ObsidianUpdateStrategy;
     default:
       return "managed";
+  }
+}
+
+export function normalizeObsidianCollectionFolderMode(
+  value: string,
+): ObsidianCollectionFolderMode {
+  switch (cleanInline(value)) {
+    case "deepest":
+      return "deepest";
+    default:
+      return "none";
   }
 }
 
@@ -200,9 +216,73 @@ export function deriveObsidianPathDefaults(
   };
 }
 
-function normalizeComparablePath(path: string) {
-  const normalized = formatPath(cleanInline(path));
-  return Zotero.isWin ? normalized.toLowerCase() : normalized;
+export function normalizeObsidianPathInput(value: string) {
+  return formatPath(cleanInline(value));
+}
+
+export function serializeObsidianPathPref(value: string, defaultValue = "") {
+  const normalizedValue = normalizeObsidianPathInput(value);
+  const normalizedDefault = normalizeObsidianPathInput(defaultValue);
+  return normalizedValue && normalizedValue !== normalizedDefault
+    ? normalizedValue
+    : "";
+}
+
+export function resolveObsidianPaths(
+  overrides: Partial<
+    Pick<
+      ObsidianResolvedPaths,
+      | "appPath"
+      | "vaultRoot"
+      | "notesDirPref"
+      | "assetsDirPref"
+      | "dashboardDirPref"
+    >
+  > = {},
+): ObsidianResolvedPaths {
+  const appPath = normalizeObsidianPathInput(
+    String(overrides.appPath ?? getPref("obsidian.appPath") ?? ""),
+  );
+  const vaultRoot = normalizeObsidianPathInput(
+    String(overrides.vaultRoot ?? getPref("obsidian.vaultRoot") ?? ""),
+  );
+  const defaults = deriveObsidianPathDefaults(vaultRoot);
+  const notesDirPref = normalizeObsidianPathInput(
+    String(overrides.notesDirPref ?? getPref("obsidian.notesDir") ?? ""),
+  );
+  const assetsDirPref = normalizeObsidianPathInput(
+    String(overrides.assetsDirPref ?? getPref("obsidian.assetsDir") ?? ""),
+  );
+  const dashboardDirPref = normalizeObsidianPathInput(
+    String(
+      overrides.dashboardDirPref ?? getPref(OBSIDIAN_DASHBOARD_DIR_PREF) ?? "",
+    ),
+  );
+  const notesDir = normalizeObsidianPathInput(notesDirPref || defaults.notesDir);
+  const assetsDir = normalizeObsidianPathInput(
+    assetsDirPref ||
+      defaults.assetsDir ||
+      (notesDir
+        ? jointPath(PathUtils.parent(notesDir) || notesDir, "assets", "zotero")
+        : ""),
+  );
+  const dashboardDir = normalizeObsidianPathInput(
+    dashboardDirPref ||
+      defaults.dashboardDir ||
+      getDefaultDashboardDir(vaultRoot, notesDir),
+  );
+
+  return {
+    appPath,
+    vaultRoot,
+    notesDirPref,
+    notesDir,
+    assetsDirPref,
+    assetsDir,
+    dashboardDirPref,
+    dashboardDir,
+    defaults,
+  };
 }
 
 function getObsidianVaultSearchRoots() {
@@ -217,13 +297,13 @@ function getObsidianVaultSearchRoots() {
   const getDirsvcPath = (key: string) => {
     try {
       // @ts-ignore nsIFile is provided by the Zotero runtime
-      return formatPath((Services.dirsvc as any).get(key, Ci.nsIFile).path);
+      return formatPath(Services.dirsvc.get(key, Ci.nsIFile).path);
     } catch (error) {
       return "";
     }
   };
   const homeDir =
-    formatPath(cleanInline(String((PathUtils as any).homeDir || ""))) ||
+    formatPath(cleanInline(String(PathUtils.homeDir || ""))) ||
     getDirsvcPath("Home");
   const documentsDir =
     getDirsvcPath("Docs") || (homeDir ? jointPath(homeDir, "Documents") : "");
@@ -252,7 +332,7 @@ function getObsidianVaultSearchRoots() {
 }
 
 async function pathIsDirectory(path: string) {
-  const normalizedPath = formatPath(cleanInline(path));
+  const normalizedPath = normalizeObsidianPathInput(path);
   if (!normalizedPath) {
     return false;
   }
@@ -265,7 +345,7 @@ async function pathIsDirectory(path: string) {
 }
 
 export async function isObsidianVaultDirectory(path: string) {
-  const normalizedPath = formatPath(cleanInline(path));
+  const normalizedPath = normalizeObsidianPathInput(path);
   if (!normalizedPath || !(await pathIsDirectory(normalizedPath))) {
     return false;
   }
@@ -273,7 +353,7 @@ export async function isObsidianVaultDirectory(path: string) {
 }
 
 async function getDirectoryChildren(path: string) {
-  const normalizedPath = formatPath(cleanInline(path));
+  const normalizedPath = normalizeObsidianPathInput(path);
   if (!normalizedPath || !(await pathIsDirectory(normalizedPath))) {
     return [];
   }
@@ -289,7 +369,7 @@ async function getDirectoryChildren(path: string) {
 export async function detectObsidianVaults(): Promise<ObsidianDetectedVault[]> {
   const detectedVaults = new Map<string, ObsidianDetectedVault>();
   const addVault = (path: string) => {
-    const normalizedPath = formatPath(cleanInline(path));
+    const normalizedPath = normalizeObsidianPathInput(path);
     if (!normalizedPath) {
       return;
     }
@@ -327,35 +407,57 @@ export function isObsidianConfigured() {
   );
 }
 
+export async function validateObsidianPaths(
+  resolvedPaths: ObsidianResolvedPaths,
+): Promise<ObsidianPathValidation> {
+  const notesDirParent = normalizeObsidianPathInput(
+    PathUtils.parent(resolvedPaths.notesDir) || "",
+  );
+  const [appPathExists, vaultRootExists, vaultRootIsDirectory, notesDirExists] =
+    await Promise.all([
+      resolvedPaths.appPath ? fileExists(resolvedPaths.appPath) : Promise.resolve(false),
+      resolvedPaths.vaultRoot
+        ? fileExists(resolvedPaths.vaultRoot)
+        : Promise.resolve(false),
+      resolvedPaths.vaultRoot
+        ? pathIsDirectory(resolvedPaths.vaultRoot)
+        : Promise.resolve(false),
+      resolvedPaths.notesDir ? fileExists(resolvedPaths.notesDir) : Promise.resolve(false),
+    ]);
+  const [notesDirParentExists, assetsDirExists, dashboardDirExists] =
+    await Promise.all([
+      notesDirParent ? fileExists(notesDirParent) : Promise.resolve(false),
+      resolvedPaths.assetsDir ? fileExists(resolvedPaths.assetsDir) : Promise.resolve(false),
+      resolvedPaths.dashboardDir
+        ? fileExists(resolvedPaths.dashboardDir)
+        : Promise.resolve(false),
+    ]);
+
+  return {
+    appPathExists,
+    vaultRootExists,
+    vaultRootIsDirectory,
+    notesDirExists,
+    notesDirParentExists,
+    assetsDirExists,
+    dashboardDirExists,
+  };
+}
+
 // ── Settings resolution ──
 
 export async function ensureObsidianSettings(): Promise<ObsidianSettings> {
-  const vaultRoot = String(getPref("obsidian.vaultRoot") || "").trim();
-  const notesDirPref = String(getPref("obsidian.notesDir") || "").trim();
-  const assetsDirPref = String(getPref("obsidian.assetsDir") || "").trim();
-  const dashboardDirPref = String(
-    getPref(OBSIDIAN_DASHBOARD_DIR_PREF) || "",
-  ).trim();
-  const defaults = deriveObsidianPathDefaults(vaultRoot);
-  const notesDir = formatPath(notesDirPref || defaults.notesDir);
+  const resolvedPaths = resolveObsidianPaths();
+  const { vaultRoot, notesDir, assetsDir, dashboardDir } = resolvedPaths;
   if (!notesDir) {
     throw new Error(getString("obsidian-sync-missingNotesDir"));
   }
 
-  if (vaultRoot && !(await fileExists(vaultRoot))) {
+  const pathValidation = await validateObsidianPaths(resolvedPaths);
+  if (vaultRoot && !pathValidation.vaultRootExists) {
     throw new Error(getString("obsidian-sync-missingVaultRoot"));
   }
 
-  const assetsDir = formatPath(
-    assetsDirPref ||
-      defaults.assetsDir ||
-      jointPath(PathUtils.parent(notesDir) || notesDir, "assets", "zotero"),
-  );
-  const dashboardDir = formatPath(
-    dashboardDirPref ||
-      defaults.dashboardDir ||
-      getDefaultDashboardDir(vaultRoot, notesDir),
-  );
   const notesDirParent = PathUtils.parent(notesDir);
   if (notesDirParent) {
     await Zotero.File.createDirectoryIfMissingAsync(notesDirParent);
@@ -387,6 +489,11 @@ export async function ensureObsidianSettings(): Promise<ObsidianSettings> {
     updateStrategy: normalizeObsidianUpdateStrategy(
       String(getPref(OBSIDIAN_UPDATE_STRATEGY_PREF) || ""),
     ),
+    collectionFolders: {
+      mode: normalizeObsidianCollectionFolderMode(
+        String(getPref(OBSIDIAN_COLLECTION_FOLDER_MODE_PREF) || ""),
+      ),
+    },
     content: getManagedNoteContentConfig(),
     translation: getMissingMetadataTranslationConfig(),
   };

@@ -2,6 +2,7 @@ import { config } from "../../../package.json";
 import { safeLog } from "../../utils/log";
 import { getPref } from "../../utils/prefs";
 import { fileExists, formatPath } from "../../utils/str";
+import { toPathKey } from "./paths";
 import {
   OBSIDIAN_FRONTMATTER_INDEX_FILE_NAME,
   OBSIDIAN_ITEM_NOTE_MAP_FILE_NAME,
@@ -77,14 +78,6 @@ function getManagedNoteRegistryEntryKey(noteItem: Zotero.Item) {
 
 function getItemMapKey(libraryID: number, topItemKey: string) {
   return libraryID && topItemKey ? `${libraryID}/${topItemKey}` : "";
-}
-
-function getPathLookupKey(path: string) {
-  const normalized = formatPath(path);
-  if (!normalized) {
-    return "";
-  }
-  return Zotero.isWin ? normalized.toLowerCase() : normalized;
 }
 
 function addRegistryKeyToLookup(map: Map<string, Set<string>>, key: string, id: string) {
@@ -173,7 +166,7 @@ function normalizeConflictPaths(paths: string[]) {
   return (paths || [])
     .map((path) => formatPath(path))
     .filter((path) => {
-      const lookupKey = getPathLookupKey(path);
+      const lookupKey = toPathKey(path);
       if (!lookupKey || seen.has(lookupKey)) {
         return false;
       }
@@ -228,7 +221,7 @@ function rebuildRegistryIndexes() {
       registryByItemMapKey.set(itemMapKey, registryKey);
     }
 
-    const pathKey = getPathLookupKey(entry.currentPath);
+    const pathKey = toPathKey(entry.currentPath);
     if (pathKey) {
       registryByPath.set(pathKey, registryKey);
     }
@@ -307,9 +300,9 @@ function mergeRegistryPatch(
   if (
     previous?.currentPath &&
     currentPath &&
-    getPathLookupKey(previous.currentPath) !== getPathLookupKey(currentPath)
+    toPathKey(previous.currentPath) !== toPathKey(currentPath)
   ) {
-    const previousPathKey = getPathLookupKey(previous.currentPath);
+    const previousPathKey = toPathKey(previous.currentPath);
     if (previousPathKey) {
       conflictPaths = normalizeConflictPaths([...conflictPaths, previous.currentPath]);
     }
@@ -511,7 +504,7 @@ function findManagedNoteRegistryEntryByItem(
 }
 
 function findManagedNoteRegistryEntryByPath(filePath: string) {
-  const registryKey = registryByPath.get(getPathLookupKey(filePath));
+  const registryKey = registryByPath.get(toPathKey(filePath));
   return registryKey ? getManagedNoteRegistry()[registryKey] || null : null;
 }
 

@@ -1,3 +1,4 @@
+import { getErrorMessage } from "../../utils/errorUtils";
 import { showHint, showHintWithLink } from "../../utils/hint";
 import { getString } from "../../utils/locale";
 import { getPref } from "../../utils/prefs";
@@ -16,7 +17,11 @@ import {
   getTopItemPreferredTitle,
   normalizeChildNoteTag,
 } from "./childNotes";
-import { normalizeFrontmatterObject } from "./frontmatter";
+import {
+  isManagedFrontmatterBridge,
+  normalizeFrontmatterObject,
+  resolveManagedFrontmatterLibraryID,
+} from "./frontmatter";
 import {
   rebuildFrontmatterIndex,
 } from "./frontmatterIndex";
@@ -26,7 +31,6 @@ import {
   resolveManagedNoteBinding,
 } from "./paths";
 import {
-  rememberManagedResolvedPath,
   resolveManagedNotePath,
   resolveManagedSyncTargetPath,
 } from "./pathResolver";
@@ -143,12 +147,18 @@ async function findManagedRecoveryCandidates(
 
       const mdStatus = await addon.api.sync.getMDStatus(entry.path);
       const meta = normalizeFrontmatterObject(mdStatus.meta);
-      if (!meta.bridge_managed) {
+      if (!isManagedFrontmatterBridge(meta)) {
         return;
       }
 
-      const libraryID = Number(meta.$libraryID || 0);
       const topItemKey = cleanInline(String(meta.zotero_key || ""));
+      const referencedNoteKey = cleanInline(
+        String(meta.zotero_note_key || meta.$itemKey || ""),
+      );
+      const libraryID = resolveManagedFrontmatterLibraryID(meta, {
+        zoteroKey: topItemKey,
+        noteKey: referencedNoteKey,
+      });
       if (!libraryID || !topItemKey) {
         return;
       }
@@ -166,9 +176,6 @@ async function findManagedRecoveryCandidates(
         return;
       }
 
-      const referencedNoteKey = cleanInline(
-        String(meta.zotero_note_key || meta.$itemKey || ""),
-      );
       if (referencedNoteKey) {
         const referencedNote = Zotero.Items.getByLibraryAndKey(
           libraryID,
@@ -263,12 +270,9 @@ async function recoverManagedObsidianNoteFromFile(
     withYAMLHeader: true,
     attachmentDir: settings.assetsDir,
     attachmentFolder: settings.attachmentFolder,
+    managedSettings: settings,
     recordHistory: false,
     historyReason: "managed-recovery-refresh",
-  });
-  await rememberManagedResolvedPath(noteItem, candidate.filepath, {
-    settings,
-    refreshSyncStatus: true,
   });
   return noteItem;
 }
@@ -332,11 +336,7 @@ async function restoreManagedObsidianNotes(
   );
   if (!managedNotes.length) {
     if (!options.quiet) {
-      showHint(
-        String(Zotero.locale || "").toLowerCase().startsWith("zh")
-          ? "没有可恢复的已删除 Obsidian 绑定。"
-          : "No tombstoned Obsidian notes to restore.",
-      );
+      showHint(getString("obsidian-sync-noTombstonedNotes"));
     }
     return { restored: 0 };
   }
@@ -350,9 +350,9 @@ async function restoreManagedObsidianNotes(
   await exportManagedObsidianNotes(managedNotes, targetFiles, settings);
   if (!options.quiet) {
     showHint(
-      String(Zotero.locale || "").toLowerCase().startsWith("zh")
-        ? `已恢复 ${managedNotes.length} 个墓碑笔记。`
-        : `Restored ${managedNotes.length} tombstoned notes.`,
+      getString("obsidian-sync-tombstonesRestored", {
+        args: { count: managedNotes.length },
+      }),
     );
   }
   return { restored: managedNotes.length };
@@ -381,9 +381,9 @@ async function rebindManagedObsidianNotes(
   }
   if (!options.quiet) {
     showHint(
-      String(Zotero.locale || "").toLowerCase().startsWith("zh")
-        ? `已重绑定 ${rebound} 个笔记，未找到 ${unresolved} 个。`
-        : `Rebound ${rebound} notes, ${unresolved} still unresolved.`,
+      getString("obsidian-sync-rebindResult", {
+        args: { rebound, unresolved },
+      }),
     );
   }
   return { rebound, unresolved };
@@ -409,9 +409,9 @@ async function unlinkManagedObsidianNotes(
   setObsidianItemNoteMap(itemNoteMap);
   if (!options.quiet) {
     showHint(
-      String(Zotero.locale || "").toLowerCase().startsWith("zh")
-        ? `已解除 ${unlinked} 个 Obsidian 绑定。`
-        : `Unlinked ${unlinked} Obsidian bindings.`,
+      getString("obsidian-sync-unlinkResult", {
+        args: { count: unlinked },
+      }),
     );
   }
   return { unlinked };
@@ -442,6 +442,7 @@ async function exportManagedObsidianNotes(
       {
         attachmentDir: settings.assetsDir,
         attachmentFolder: settings.attachmentFolder,
+        managedSettings: settings,
         historyReason: "obsidian-sync",
         targetFiles,
       },
@@ -453,16 +454,8 @@ async function exportManagedObsidianNotes(
         withYAMLHeader: true,
         attachmentDir: settings.assetsDir,
         attachmentFolder: settings.attachmentFolder,
+        managedSettings: settings,
         historyReason: "obsidian-sync",
-      });
-    }
-  }
-
-  for (const [index, targetPath] of targetFiles.entries()) {
-    if (targetPath) {
-      await rememberManagedResolvedPath(noteItems[index], targetPath, {
-        settings,
-        refreshSyncStatus: true,
       });
     }
   }
@@ -514,15 +507,12 @@ function isManagedRepairCandidate(noteItem: Zotero.Item, mdStatus: MDStatus) {
     return false;
   }
   const meta = normalizeFrontmatterObject(mdStatus.meta);
-  if (!meta.bridge_managed) {
-    return false;
-  }
-  const noteKey = cleanInline(String(meta.zotero_note_key || ""));
-  const topItemKey = cleanInline(String(meta.zotero_key || ""));
-  if (noteKey && noteKey !== noteItem.key) {
-    return false;
-  }
-  if (topItemKey && topItemKey !== noteItem.parentItem.key) {
+  if (
+    !isManagedFrontmatterBridge(meta, {
+      zoteroKey: noteItem.parentItem.key,
+      noteKey: noteItem.key,
+    })
+  ) {
     return false;
   }
   return true;
@@ -752,10 +742,11 @@ async function resyncAllManagedObsidianNotes(successMessage?: string) {
         }),
     );
   } catch (e) {
-    const message = (e as Error)?.message || String(e);
     ztoolkit.log("[ObsidianBridge] resync failed", e);
     showHint(
-      getString("obsidian-sync-error", { args: { detail: message } }),
+      getString("obsidian-sync-error", {
+        args: { detail: getErrorMessage(e) },
+      }),
     );
   }
 }
@@ -815,203 +806,23 @@ async function promptChildNotesForSingleItemSync(
     managedNoteItem,
     childNoteConfig,
   );
-  if (!childNoteConfig.promptSelect || matchedNotes.length <= 1) {
+  if (!shouldPromptForChildNotes(childNoteConfig.promptSelect, matchedNotes)) {
     return true;
   }
 
-  const excludedKeys = new Set(
-    getChildNoteExcludeMap()[getItemMapKey(topItem)] || [],
-  );
-  const matchedTagSet = new Set(childNoteConfig.matchTags);
-  const checkboxIDs = new Map<string, string>();
-  const dialogData = {
-    accepted: false,
-    selectedKeys: [] as string[],
-  };
+  const dialogState = createChildNotePickerState(topItem, matchedNotes);
+  const dialogData = createChildNotePickerDialogData();
   const dialog = new ztoolkit.Dialog(1, 1)
     .setDialogData(dialogData)
-    .addCell(0, 0, {
-      tag: "vbox",
-      attributes: { flex: 1 },
-      styles: {
-        gap: "14px",
-        padding: "10px 8px 2px",
-        minWidth: "0",
-      },
-      children: [
-        {
-          tag: "vbox",
-          attributes: { flex: 0 },
-          styles: {
-            gap: "8px",
-          },
-          children: [
-            {
-              tag: "label",
-              properties: {
-                textContent: getTopItemPreferredTitle(topItem),
-              },
-              styles: {
-                fontSize: "18px",
-                fontWeight: "700",
-                lineHeight: "1.35",
-                wordBreak: "break-word",
-              },
-            },
-            {
-              tag: "description",
-              properties: {
-                textContent: getString("obsidian-childNotePicker-help"),
-              },
-              styles: {
-                color: "var(--text-color-deemphasized)",
-                lineHeight: "1.55",
-                whiteSpace: "normal",
-              },
-            },
-          ],
-        },
-        {
-          tag: "div",
-          namespace: "html",
-          styles: {
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "flex-start",
-            alignItems: "stretch",
-            gap: "10px",
-            minHeight: "280px",
-            maxHeight: "340px",
-            overflowY: "auto",
-            padding: "12px",
-            border: "1px solid rgba(255, 255, 255, 0.08)",
-            borderRadius: "12px",
-            background: "rgba(255, 255, 255, 0.03)",
-            boxSizing: "border-box",
-          },
-          children: matchedNotes.map((noteItem) => {
-            const checkboxID = `obsidian-child-note-${noteItem.key}`;
-            checkboxIDs.set(noteItem.key, checkboxID);
-            const matchedTags = getChildNoteTags(noteItem).filter((tag) =>
-              matchedTagSet.has(normalizeChildNoteTag(tag)),
-            );
-            const cardChildren: any[] = [
-              {
-                tag: "div",
-                namespace: "html",
-                styles: {
-                  display: "flex",
-                  alignItems: "flex-start",
-                  gap: "12px",
-                },
-                children: [
-                  {
-                    tag: "input",
-                    namespace: "html",
-                    id: checkboxID,
-                    properties: {
-                      type: "checkbox",
-                      checked: !excludedKeys.has(noteItem.key),
-                    },
-                    styles: {
-                      marginTop: "3px",
-                      accentColor: "var(--accent-blue)",
-                      flexShrink: "0",
-                    },
-                  },
-                  {
-                    tag: "div",
-                    namespace: "html",
-                    styles: {
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: "8px",
-                      minWidth: "0",
-                      flex: "1",
-                    },
-                    children: [
-                      {
-                        tag: "div",
-                        namespace: "html",
-                        properties: {
-                          textContent: getChildNoteDisplayTitle(
-                            noteItem,
-                            topItem,
-                          ),
-                        },
-                        styles: {
-                          fontSize: "15px",
-                          fontWeight: "700",
-                          lineHeight: "1.45",
-                          wordBreak: "break-word",
-                        },
-                      },
-                      {
-                        tag: "div",
-                        namespace: "html",
-                        styles: {
-                          display: "flex",
-                          flexWrap: "wrap",
-                          gap: "6px",
-                        },
-                        children: matchedTags.map((tag) => ({
-                          tag: "span",
-                          namespace: "html",
-                          properties: {
-                            textContent: tag,
-                          },
-                          styles: {
-                            display: "inline-flex",
-                            alignItems: "center",
-                            padding: "3px 8px",
-                            borderRadius: "999px",
-                            background: "rgba(64, 156, 255, 0.16)",
-                            color: "var(--accent-blue)",
-                            fontSize: "12px",
-                            fontWeight: "600",
-                            lineHeight: "1.3",
-                          },
-                        })),
-                      },
-                    ],
-                  },
-                ],
-              },
-            ];
-            return {
-              tag: "label",
-              namespace: "html",
-              attributes: {
-                for: checkboxID,
-              },
-              styles: {
-                display: "flex",
-                flexDirection: "column",
-                gap: "8px",
-                padding: "12px 14px",
-                borderRadius: "10px",
-                border: "1px solid rgba(255, 255, 255, 0.05)",
-                background: "rgba(0, 0, 0, 0.16)",
-                cursor: "pointer",
-                boxSizing: "border-box",
-              },
-              children: cardChildren,
-            };
-          }),
-        },
-      ],
-    })
+    .addCell(0, 0, buildChildNotePickerDialogCell(dialogState))
     .addButton(getString("obsidian-childNotePicker-confirm"), "accept", {
       callback: () => {
         dialogData.accepted = true;
-        dialogData.selectedKeys = matchedNotes
-          .filter((noteItem) => {
-            const checkbox = dialog.window?.document.getElementById(
-              checkboxIDs.get(noteItem.key) || "",
-            ) as HTMLInputElement | null;
-            return Boolean(checkbox?.checked);
-          })
-          .map((noteItem) => noteItem.key);
+        dialogData.selectedKeys = collectSelectedChildNoteKeys(
+          dialog.window,
+          dialogState.matchedNotes,
+          dialogState.checkboxIDs,
+        );
       },
     })
     .addButton(getString("obsidian-childNotePicker-cancel"), "cancel")
@@ -1023,40 +834,311 @@ async function promptChildNotesForSingleItemSync(
       fitContent: false,
     });
 
-  await dialog.dialogData.loadLock?.promise;
-  const acceptButton = dialog.window?.document.getElementById(
-    "accept",
-  ) as HTMLButtonElement | null;
-  const cancelButton = dialog.window?.document.getElementById(
-    "cancel",
-  ) as HTMLButtonElement | null;
-  for (const button of [acceptButton, cancelButton]) {
-    if (!button) continue;
-    button.style.minWidth = "140px";
-    button.style.height = "38px";
-    button.style.borderRadius = "10px";
-    button.style.fontWeight = "600";
-    button.style.padding = "0 18px";
-  }
-  if (acceptButton) {
-    acceptButton.style.background = "var(--accent-blue)";
-    acceptButton.style.color = "#fff";
-    acceptButton.style.border = "none";
-    acceptButton.focus();
-  }
-  if (cancelButton) {
-    cancelButton.style.background = "rgba(255, 255, 255, 0.06)";
-    cancelButton.style.color = "var(--text-color)";
-    cancelButton.style.border = "1px solid rgba(255, 255, 255, 0.08)";
-  }
+  await styleChildNotePickerDialog(dialog);
 
   await dialog.dialogData.unloadLock?.promise;
   if (!dialogData.accepted) {
     return false;
   }
 
-  persistChildNoteExclusions(topItem, matchedNotes, dialogData.selectedKeys);
+  persistChildNoteExclusions(
+    topItem,
+    dialogState.matchedNotes,
+    dialogData.selectedKeys,
+  );
   return true;
+}
+
+type ChildNotePickerState = {
+  topItem: Zotero.Item;
+  matchedNotes: Zotero.Item[];
+  excludedKeys: Set<string>;
+  matchedTagSet: Set<string>;
+  checkboxIDs: Map<string, string>;
+};
+
+type ChildNotePickerDialogData = {
+  accepted: boolean;
+  selectedKeys: string[];
+};
+
+function shouldPromptForChildNotes(
+  promptSelect: boolean,
+  matchedNotes: Zotero.Item[],
+) {
+  return promptSelect && matchedNotes.length > 1;
+}
+
+function createChildNotePickerDialogData(): ChildNotePickerDialogData {
+  return {
+    accepted: false,
+    selectedKeys: [],
+  };
+}
+
+function createChildNotePickerState(
+  topItem: Zotero.Item,
+  matchedNotes: Zotero.Item[],
+): ChildNotePickerState {
+  return {
+    topItem,
+    matchedNotes,
+    excludedKeys: new Set(getChildNoteExcludeMap()[getItemMapKey(topItem)] || []),
+    matchedTagSet: new Set(getChildNoteBridgeConfig().matchTags),
+    checkboxIDs: new Map<string, string>(),
+  };
+}
+
+function getChildNotePickerCheckboxID(noteItem: Zotero.Item) {
+  return `obsidian-child-note-${noteItem.key}`;
+}
+
+function getMatchedBridgeTags(
+  noteItem: Zotero.Item,
+  matchedTagSet: Set<string>,
+) {
+  return getChildNoteTags(noteItem).filter((tag) =>
+    matchedTagSet.has(normalizeChildNoteTag(tag)),
+  );
+}
+
+function buildChildNoteTagChip(tag: string) {
+  return {
+    tag: "span",
+    namespace: "html",
+    properties: {
+      textContent: tag,
+    },
+    styles: {
+      display: "inline-flex",
+      alignItems: "center",
+      padding: "3px 8px",
+      borderRadius: "999px",
+      background: "rgba(64, 156, 255, 0.16)",
+      color: "var(--accent-blue)",
+      fontSize: "12px",
+      fontWeight: "600",
+      lineHeight: "1.3",
+    },
+  };
+}
+
+function buildChildNotePickerCard(
+  topItem: Zotero.Item,
+  noteItem: Zotero.Item,
+  excludedKeys: Set<string>,
+  matchedTagSet: Set<string>,
+  checkboxIDs: Map<string, string>,
+) {
+  const checkboxID = getChildNotePickerCheckboxID(noteItem);
+  checkboxIDs.set(noteItem.key, checkboxID);
+  const matchedTags = getMatchedBridgeTags(noteItem, matchedTagSet);
+
+  return {
+    tag: "label",
+    namespace: "html",
+    attributes: {
+      for: checkboxID,
+    },
+    styles: {
+      display: "flex",
+      flexDirection: "column",
+      gap: "8px",
+      padding: "12px 14px",
+      borderRadius: "10px",
+      border: "1px solid rgba(255, 255, 255, 0.05)",
+      background: "rgba(0, 0, 0, 0.16)",
+      cursor: "pointer",
+      boxSizing: "border-box",
+    },
+    children: [
+      {
+        tag: "div",
+        namespace: "html",
+        styles: {
+          display: "flex",
+          alignItems: "flex-start",
+          gap: "12px",
+        },
+        children: [
+          {
+            tag: "input",
+            namespace: "html",
+            id: checkboxID,
+            properties: {
+              type: "checkbox",
+              checked: !excludedKeys.has(noteItem.key),
+            },
+            styles: {
+              marginTop: "3px",
+              accentColor: "var(--accent-blue)",
+              flexShrink: "0",
+            },
+          },
+          {
+            tag: "div",
+            namespace: "html",
+            styles: {
+              display: "flex",
+              flexDirection: "column",
+              gap: "8px",
+              minWidth: "0",
+              flex: "1",
+            },
+            children: [
+              {
+                tag: "div",
+                namespace: "html",
+                properties: {
+                  textContent: getChildNoteDisplayTitle(noteItem, topItem),
+                },
+                styles: {
+                  fontSize: "15px",
+                  fontWeight: "700",
+                  lineHeight: "1.45",
+                  wordBreak: "break-word",
+                },
+              },
+              {
+                tag: "div",
+                namespace: "html",
+                styles: {
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: "6px",
+                },
+                children: matchedTags.map(buildChildNoteTagChip),
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  };
+}
+
+function buildChildNotePickerDialogCell(state: ChildNotePickerState) {
+  return {
+    tag: "vbox",
+    attributes: { flex: 1 },
+    styles: {
+      gap: "14px",
+      padding: "10px 8px 2px",
+      minWidth: "0",
+    },
+    children: [
+      {
+        tag: "vbox",
+        attributes: { flex: 0 },
+        styles: {
+          gap: "8px",
+        },
+        children: [
+          {
+            tag: "label",
+            properties: {
+              textContent: getTopItemPreferredTitle(state.topItem),
+            },
+            styles: {
+              fontSize: "18px",
+              fontWeight: "700",
+              lineHeight: "1.35",
+              wordBreak: "break-word",
+            },
+          },
+          {
+            tag: "description",
+            properties: {
+              textContent: getString("obsidian-childNotePicker-help"),
+            },
+            styles: {
+              color: "var(--text-color-deemphasized)",
+              lineHeight: "1.55",
+              whiteSpace: "normal",
+            },
+          },
+        ],
+      },
+      {
+        tag: "div",
+        namespace: "html",
+        styles: {
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "flex-start",
+          alignItems: "stretch",
+          gap: "10px",
+          minHeight: "280px",
+          maxHeight: "340px",
+          overflowY: "auto",
+          padding: "12px",
+          border: "1px solid rgba(255, 255, 255, 0.08)",
+          borderRadius: "12px",
+          background: "rgba(255, 255, 255, 0.03)",
+          boxSizing: "border-box",
+        },
+        children: state.matchedNotes.map((noteItem) =>
+          buildChildNotePickerCard(
+            state.topItem,
+            noteItem,
+            state.excludedKeys,
+            state.matchedTagSet,
+            state.checkboxIDs,
+          ),
+        ),
+      },
+    ],
+  };
+}
+
+function collectSelectedChildNoteKeys(
+  dialogWindow: Window | null | undefined,
+  matchedNotes: Zotero.Item[],
+  checkboxIDs: Map<string, string>,
+) {
+  return matchedNotes
+    .filter((noteItem) => {
+      const checkbox = dialogWindow?.document.getElementById(
+        checkboxIDs.get(noteItem.key) || "",
+      ) as HTMLInputElement | null;
+      return Boolean(checkbox?.checked);
+    })
+    .map((noteItem) => noteItem.key);
+}
+
+async function styleChildNotePickerDialog(dialog: any) {
+  await dialog.dialogData.loadLock?.promise;
+
+  const acceptButton = dialog.window?.document.getElementById(
+    "accept",
+  ) as HTMLButtonElement | null;
+  const cancelButton = dialog.window?.document.getElementById(
+    "cancel",
+  ) as HTMLButtonElement | null;
+
+  for (const button of [acceptButton, cancelButton]) {
+    if (!button) {
+      continue;
+    }
+    button.style.minWidth = "140px";
+    button.style.height = "38px";
+    button.style.borderRadius = "10px";
+    button.style.fontWeight = "600";
+    button.style.padding = "0 18px";
+  }
+
+  if (acceptButton) {
+    acceptButton.style.background = "var(--accent-blue)";
+    acceptButton.style.color = "#fff";
+    acceptButton.style.border = "none";
+    acceptButton.focus();
+  }
+
+  if (cancelButton) {
+    cancelButton.style.background = "rgba(255, 255, 255, 0.06)";
+    cancelButton.style.color = "var(--text-color)";
+    cancelButton.style.border = "1px solid rgba(255, 255, 255, 0.08)";
+  }
 }
 
 async function syncSelectedItemsToObsidian() {
@@ -1121,10 +1203,11 @@ async function syncSelectedItemsToObsidian() {
       openObsidianNote(targetFiles[0]);
     }
   } catch (e) {
-    const message = (e as Error)?.message || String(e);
     ztoolkit.log("[ObsidianBridge] sync failed", e);
     showHint(
-      getString("obsidian-sync-error", { args: { detail: message } }),
+      getString("obsidian-sync-error", {
+        args: { detail: getErrorMessage(e) },
+      }),
     );
   }
 }

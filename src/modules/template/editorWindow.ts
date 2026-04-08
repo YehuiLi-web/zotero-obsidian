@@ -7,6 +7,7 @@ import { waitUtilAsync } from "../../utils/wait";
 import { xhtmlEscape } from "../../utils/str";
 import { initializeTemplateEditor } from "./monacoEditor";
 import { normalizeTemplateName } from "./controller";
+import { formatStore, getTemplateSnippets } from "./editorData";
 
 export async function showTemplateEditor() {
   if (
@@ -128,7 +129,7 @@ export async function showTemplateEditor() {
             )
             .join("\n"),
           onNextClick: () => {
-            Zotero.launchURL(
+            Zotero.launchURL?.(
               "https://github.com/windingwind/zotero-better-notes/blob/master/docs/about-note-template.md",
             );
           },
@@ -144,12 +145,12 @@ export async function showTemplateEditor() {
         createTemplate();
       });
     _window.document.querySelector("#help")?.addEventListener("click", (ev) => {
-      Zotero.launchURL(
+      Zotero.launchURL?.(
         "https://github.com/windingwind/zotero-better-notes/blob/master/docs/about-note-template.md",
       );
     });
     _window.document.querySelector("#more")?.addEventListener("click", (ev) => {
-      Zotero.launchURL(
+      Zotero.launchURL?.(
         "https://github.com/windingwind/zotero-better-notes/discussions/categories/note-templates",
       );
     });
@@ -384,11 +385,7 @@ function updateEditor() {
     shareTemplate?.removeAttribute("disabled");
     formats.hidden = false;
     snippets.hidden = false;
-    updateSnippets(
-      (type === "system"
-        ? name.slice(1, -1)
-        : type) as keyof typeof snippetsStore,
-    );
+    updateSnippets(type === "system" ? name.slice(1, -1) : type);
   }
 }
 
@@ -486,10 +483,8 @@ async function updateSnippets(type: string) {
   }
   container.innerHTML = "";
 
-  const snippets = (
-    snippetsStore[type as keyof typeof snippetsStore] || []
-  ).concat(snippetsStore.global);
-  if (!snippets) {
+  const snippets = getTemplateSnippets(type);
+  if (!snippets.length) {
     return;
   }
 
@@ -674,7 +669,7 @@ function deleteSelectedTemplate() {
   const name = getSelectedTemplateName();
   if (addon.api.template.SYSTEM_TEMPLATE_NAMES.includes(name)) {
     showHint(
-      `Template ${name} is a system template. Removing system template is note allowed.`,
+      `Template ${name} is a system template. Removing system template is not allowed.`,
     );
     return;
   }
@@ -771,314 +766,3 @@ async function restoreTemplates(win: Window) {
   }
   await refresh(true);
 }
-
-const formatStore = [
-  {
-    name: "bold",
-    code: "**${text}**",
-  },
-  {
-    name: "italic",
-    code: "_${text}_",
-  },
-  {
-    name: "strikethrough",
-    code: "~~${text}~~",
-  },
-  {
-    name: "underline",
-    code: "<u>${text}</u>",
-  },
-  {
-    name: "superscript",
-    code: "<sup>${text}</sup>",
-  },
-  { name: "subscript", code: "<sub>${text}</sub>" },
-  {
-    name: "textColor",
-    code: '<span style="color: orange">${text}</span>',
-  },
-  {
-    name: "link",
-    code: "[${text}](url)",
-  },
-  {
-    name: "quote",
-    code: "\n> ${text}",
-  },
-  {
-    name: "monospaced",
-    code: "<code>${text}</code>",
-  },
-  {
-    name: "code",
-    code: "\n<pre>\n${text}\n</pre>\n",
-  },
-  {
-    name: "table",
-    code: "\n| ${text} | Header 2 |\n|----------|----------|\n| Cell 1   | Cell 2   |\n",
-  },
-  {
-    name: "h1",
-    code: "\n# ${text}",
-  },
-  {
-    name: "h2",
-    code: "\n## ${text}",
-  },
-  {
-    name: "h3",
-    code: "\n### ${text}",
-  },
-  {
-    name: "bullet",
-    code: "\n- ${text}",
-  },
-  {
-    name: "numbered",
-    code: "\n1. ${text}",
-  },
-  {
-    name: "inlineMath",
-    code: "$${text}$",
-    defaultText: "e=mc^2",
-  },
-  {
-    name: "blockMath",
-    code: "\n$$\n${text}\n$$\n",
-    defaultText: "e=mc^2",
-  },
-  {
-    name: "inlineScript",
-    code: "${ ${text} }",
-    defaultText: "Zotero.version",
-  },
-  {
-    name: "blockScript",
-    code: "\n${{\n  ${text}\n}}$\n",
-    defaultText: "return Zotero.version;",
-  },
-];
-
-const snippetsStore = {
-  global: [
-    {
-      name: "useMarkdown",
-      code: "\n// @use-markdown\n",
-      type: "syntax",
-    },
-    {
-      name: "useRefresh",
-      code: "\n// @use-refresh\n",
-      type: "syntax",
-    },
-    {
-      name: "dryRunFlag",
-      code: "_env.dryRun",
-      type: "variable",
-    },
-  ],
-  item: [
-    {
-      name: "itemBeforeLoop",
-      code: "\n// @beforeloop-begin\n\n// @beforeloop-end\n",
-      type: "syntax",
-    },
-    {
-      name: "itemInLoop",
-      code: "\n// @default-begin\n\n// @default-end\n",
-      type: "syntax",
-    },
-    {
-      name: "itemAfterLoop",
-      code: "\n// @afterloop-begin\n\n// @afterloop-end\n",
-      type: "syntax",
-    },
-    {
-      name: "itemItems",
-      code: "items",
-      type: "variable",
-    },
-    {
-      name: "itemItem",
-      code: "item",
-      type: "variable",
-    },
-    {
-      name: "itemTopItem",
-      code: "topItem",
-      type: "variable",
-    },
-    {
-      name: "itemTargetNoteItem",
-      code: "targetNoteItem",
-      type: "variable",
-    },
-    {
-      name: "itemCopyNoteImage",
-      code: "${copyNoteImage(...)}",
-      type: "expression",
-    },
-    {
-      name: "itemSharedObj",
-      code: "sharedObj",
-      type: "variable",
-    },
-    {
-      name: "itemFieldTitle",
-      code: '${topItem.getField("title")}',
-      type: "expression",
-    },
-    {
-      name: "itemFieldAbstract",
-      code: '${topItem.getField("abstractNote")}',
-      type: "expression",
-    },
-    {
-      name: "itemFieldCitKey",
-      code: '${topItem.getField("citationKey")}',
-      type: "expression",
-    },
-    {
-      name: "itemFieldDate",
-      code: '${topItem.getField("date")}',
-      type: "expression",
-    },
-    {
-      name: "itemFieldDOI",
-      code: '${topItem.getField("DOI")}',
-      type: "expression",
-    },
-    {
-      name: "itemFieldDOIURL",
-      code: `
-\${{
-const doi = topItem.getField("DOI");
-const url = topItem.getField("url");
-if (doi) {
-  return \`DOI: <a href="https://doi.org/\${doi}">\${doi}</a>\`;
-} else {
-  return \`URL: <a href="\${url}">\${url}</a>\`;
-}
-}}$
-`,
-      type: "expression",
-    },
-    {
-      name: "itemFieldAuthors",
-      code: '${topItem.getCreators().map((v)=>v.firstName+" "+v.lastName).join("; ")}',
-      type: "expression",
-    },
-    {
-      name: "itemFieldJournal",
-      code: '${topItem.getField("publicationTitle")}',
-      type: "expression",
-    },
-    {
-      name: "itemFieldTitleTranslation",
-      code: '${topItem.getField("titleTranslation")}',
-      type: "expression",
-    },
-  ],
-  text: [
-    {
-      name: "textTargetNoteItem",
-      code: "targetNoteItem",
-      type: "variable",
-    },
-    {
-      name: "textSharedObj",
-      code: "sharedObj",
-      type: "variable",
-    },
-  ],
-  QuickInsertV3: [
-    {
-      name: "quickInsertLink",
-      code: "link",
-      type: "variable",
-    },
-    {
-      name: "quickInsertLinkText",
-      code: "linkText",
-      type: "variable",
-    },
-    {
-      name: "quickInsertSubNoteItem",
-      code: "subNoteItem",
-      type: "variable",
-    },
-    {
-      name: "quickInsertNoteItem",
-      code: "noteItem",
-      type: "variable",
-    },
-  ],
-  QuickImportV2: [
-    {
-      name: "quickImportLink",
-      code: "link",
-      type: "variable",
-    },
-    {
-      name: "quickImportNoteItem",
-      code: "noteItem",
-      type: "variable",
-    },
-  ],
-  QuickNoteV5: [
-    {
-      name: "quickNoteAnnotationItem",
-      code: "annotationItem",
-      type: "variable",
-    },
-    {
-      name: "quickNoteTopItem",
-      code: "topItem",
-      type: "variable",
-    },
-    {
-      name: "quickNoteNoteItem",
-      code: "noteItem",
-      type: "variable",
-    },
-  ],
-  ExportMDFileNameV2: [
-    {
-      name: "exportMDFileNameNoteItem",
-      code: "noteItem",
-      type: "variable",
-    },
-  ],
-  ExportMDFileHeaderV2: [
-    {
-      name: "exportMDFileHeaderNoteItem",
-      code: "noteItem",
-      type: "variable",
-    },
-  ],
-  ExportMDFileContent: [
-    {
-      name: "exportMDFileContentNoteItem",
-      code: "noteItem",
-      type: "variable",
-    },
-    {
-      name: "exportMDFileContentMDContent",
-      code: "mdContent",
-      type: "variable",
-    },
-  ],
-  ExportLatexFileContent: [
-    {
-      name: "exportLatexFileContentNoteItem",
-      code: "noteItem",
-      type: "variable",
-    },
-    {
-      name: "exportLatexFileContentLatexContent",
-      code: "latexContent",
-      type: "variable",
-    },
-  ],
-};

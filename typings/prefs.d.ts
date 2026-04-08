@@ -22,6 +22,7 @@ declare namespace _ZoteroTypes {
       "obsidian.fileNameTemplate": string;
       "obsidian.syncScope": string;
       "obsidian.updateStrategy": string;
+      "obsidian.collectionFolderMode": string;
       "obsidian.frontmatterFields": string;
       "obsidian.autoSync": boolean;
       "obsidian.watchFiles": boolean;

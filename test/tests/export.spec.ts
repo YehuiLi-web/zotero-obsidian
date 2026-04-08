@@ -19,7 +19,11 @@ import {
 } from "../utils/obsidian";
 import { setPref } from "../../src/utils/prefs";
 import { waitUtilAsync } from "../../src/utils/wait";
-import { setObsidianItemNoteMap } from "../../src/modules/obsidian/settings";
+import {
+  DEFAULT_MANAGED_FRONTMATTER_FIELDS,
+  setManagedFrontmatterFields,
+  setObsidianItemNoteMap,
+} from "../../src/modules/obsidian/settings";
 import { getManagedPathRegistryEntry } from "../../src/modules/obsidian/managedPathRegistry";
 
 describe("Export", function () {
@@ -84,6 +88,48 @@ describe("Export", function () {
     await Zotero.Items.erase(note.id);
   });
 
+  it("api.sync.getMDFileName prefers the most recently modified matching markdown file", async function () {
+    const note = new Zotero.Item("note");
+    note.setNote(
+      `<div data-schema-version="${config.dataSchemaVersion}"><p>Latest file test</p></div>`,
+    );
+    await note.saveTx();
+
+    const tempDir = await getTempDirectory();
+    const olderPath = PathUtils.join(tempDir, `older-${note.key}.md`);
+    const newerPath = PathUtils.join(tempDir, `newer-${note.key}.md`);
+
+    await Zotero.File.putContentsAsync(olderPath, "# Older candidate");
+    const olderStat = await IOUtils.stat(olderPath);
+    let newerStat = olderStat;
+
+    for (let attempt = 0; attempt < 8; attempt += 1) {
+      if (
+        Number(newerStat.lastModified || 0) >
+        Number(olderStat.lastModified || 0)
+      ) {
+        break;
+      }
+      await Zotero.Promise.delay(50);
+      await Zotero.File.putContentsAsync(
+        newerPath,
+        `# Newer candidate ${attempt}`,
+      );
+      newerStat = await IOUtils.stat(newerPath);
+    }
+
+    assert.isAbove(
+      Number(newerStat.lastModified || 0),
+      Number(olderStat.lastModified || 0),
+    );
+    assert.equal(
+      await addon.api.sync.getMDFileName(note.id, tempDir),
+      PathUtils.filename(newerPath),
+    );
+
+    await Zotero.Items.erase(note.id);
+  });
+
   it("api.$export.saveMD preserves managed frontmatter and markers", async function () {
     const { topItem, note } = await createManagedObsidianNote();
     const tempDir = await getTempDirectory();
@@ -107,13 +153,16 @@ describe("Export", function () {
     assert.equal(syncStatus.path, tempDir);
     assert.equal(syncStatus.filename, "managed-note.md");
     assert.isTrue(Boolean(syncStatus.managedSourceHash));
-    assert.equal(mdStatus.meta?.$libraryID, note.libraryID);
     assert.equal(mdStatus.meta?.zotero_key, topItem.key);
     assert.equal(mdStatus.meta?.zotero_note_key, note.key);
     assert.equal(mdStatus.meta?.reading_status, "review");
     assert.equal(mdStatus.meta?.rating, 4);
     assert.equal(mdStatus.meta?.topic, "sync-model");
-    assert.isTrue(mdStatus.meta?.bridge_managed);
+    assert.notProperty(mdStatus.meta || {}, "$libraryID");
+    assert.notProperty(mdStatus.meta || {}, "$version");
+    assert.notProperty(mdStatus.meta || {}, "bridge_managed");
+    assert.notProperty(mdStatus.meta || {}, "bridge_schema");
+    assert.notProperty(mdStatus.meta || {}, "citekey");
     assert.sameMembers(mdStatus.meta?.tags || [], [
       "literature",
       "zotero",
@@ -126,6 +175,52 @@ describe("Export", function () {
 
     await Zotero.Items.erase(note.id);
     await Zotero.Items.erase(topItem.id);
+  });
+
+  it("managed frontmatter toggles title_translation, aliases, and compatibility fields independently", async function () {
+    const { topItem, note } = await createManagedObsidianNote();
+    const tempDir = await getTempDirectory();
+    const filePath = PathUtils.join(tempDir, "managed-frontmatter-split.md");
+
+    try {
+      setManagedFrontmatterFields(
+        DEFAULT_MANAGED_FRONTMATTER_FIELDS.filter(
+          (field) =>
+            !["aliases", "libraryId", "noteVersion"].includes(field),
+        ),
+      );
+
+      await addon.api.$export.saveMD(filePath, note.id, {
+        keepNoteLink: false,
+        withYAMLHeader: true,
+      });
+
+      let mdStatus = await addon.api.sync.getMDStatus(filePath);
+      assert.equal(mdStatus.meta?.title_translation, "托管同步标题");
+      assert.notProperty(mdStatus.meta || {}, "aliases");
+      assert.notProperty(mdStatus.meta || {}, "$libraryID");
+      assert.notProperty(mdStatus.meta || {}, "$version");
+
+      setManagedFrontmatterFields([
+        ...DEFAULT_MANAGED_FRONTMATTER_FIELDS,
+        "libraryId",
+        "noteVersion",
+      ]);
+
+      await addon.api.$export.saveMD(filePath, note.id, {
+        keepNoteLink: false,
+        withYAMLHeader: true,
+      });
+
+      mdStatus = await addon.api.sync.getMDStatus(filePath);
+      assert.sameMembers(mdStatus.meta?.aliases || [], ["托管同步标题"]);
+      assert.equal(mdStatus.meta?.$libraryID, note.libraryID);
+      assert.equal(mdStatus.meta?.$version, note.version);
+    } finally {
+      setManagedFrontmatterFields(DEFAULT_MANAGED_FRONTMATTER_FIELDS);
+      await Zotero.Items.erase(note.id);
+      await Zotero.Items.erase(topItem.id);
+    }
   });
 
   it("api.obsidian.renderMarkdown preserves user-managed frontmatter fields", async function () {
@@ -158,7 +253,7 @@ describe("Export", function () {
     assert.match(rendered, /project:\r?\n\s+-\s+"alpha-track"/);
     assert.match(rendered, /method:\r?\n\s+-\s+"transformer"/);
     assert.match(rendered, /topic:\r?\n\s+-\s+"sync-model"/);
-    assert.include(rendered, "bridge_managed: true");
+    assert.notInclude(rendered, "bridge_managed: true");
 
     await Zotero.Items.erase(note.id);
     await Zotero.Items.erase(topItem.id);
@@ -271,6 +366,127 @@ describe("Export", function () {
 
     await Zotero.Items.erase(note.id);
     await Zotero.Items.erase(topItem.id);
+  });
+
+  it("api.$export.syncMDBatch reuses cached managed sync hashes when provided", async function () {
+    const { topItem, note } = await createManagedObsidianNote();
+    const tempDir = await getTempDirectory();
+    const cachedManagedSourceHash = "cached-managed-source-hash";
+    const cachedNoteSnapshotMd5 = "cached-note-snapshot-md5";
+    const originalGetManagedSourceHash = addon.api.obsidian.getManagedSourceHash;
+    let hashCalls = 0;
+
+    addon.api.obsidian.getManagedSourceHash = async (noteItem) => {
+      hashCalls += 1;
+      return await originalGetManagedSourceHash(noteItem);
+    };
+
+    try {
+      await addon.api.$export.syncMDBatch(tempDir, [note.id], undefined, {
+        managedSourceHashes: {
+          [note.id]: cachedManagedSourceHash,
+        },
+        noteSnapshotMd5s: {
+          [note.id]: cachedNoteSnapshotMd5,
+        },
+      });
+    } finally {
+      addon.api.obsidian.getManagedSourceHash = originalGetManagedSourceHash;
+    }
+
+    const syncStatus = addon.api.sync.getSyncStatus(note.id);
+
+    assert.equal(hashCalls, 0);
+    assert.equal(syncStatus.managedSourceHash, cachedManagedSourceHash);
+    assert.equal(syncStatus.noteMd5, cachedNoteSnapshotMd5);
+
+    await Zotero.Items.erase(note.id);
+    await Zotero.Items.erase(topItem.id);
+  });
+
+  it("hooks.onSyncing replays requests queued while another sync is running", async function () {
+    const tempDir = await getTempDirectory();
+    const noteOne = new Zotero.Item("note");
+    noteOne.setNote(
+      `<div data-schema-version="${config.dataSchemaVersion}"><p>Queued sync one</p></div>`,
+    );
+    await noteOne.saveTx();
+
+    const noteTwo = new Zotero.Item("note");
+    noteTwo.setNote(
+      `<div data-schema-version="${config.dataSchemaVersion}"><p>Queued sync two</p></div>`,
+    );
+    await noteTwo.saveTx();
+
+    for (const noteItem of [noteOne, noteTwo]) {
+      addon.api.sync.addSyncNote(noteItem.id);
+      addon.api.sync.updateSyncStatus(noteItem.id, {
+        path: tempDir,
+        filename: `queued-${noteItem.key}.md`,
+        md5: "",
+        noteMd5: "",
+        frontmatterMd5: "",
+        managedSourceHash: "",
+        fileLastModified: 0,
+        lastsync: 0,
+        itemID: noteItem.id,
+      });
+    }
+
+    const originalSyncMDBatch = addon.api.$export.syncMDBatch;
+    const seenBatches: number[][] = [];
+    let releaseFirstBatch: (() => void) | null = null;
+    const firstBatchBlocked = new Promise<void>((resolve) => {
+      releaseFirstBatch = resolve;
+    });
+
+    addon.api.$export.syncMDBatch = async (
+      saveDir,
+      noteIds,
+      metaList,
+      options,
+    ) => {
+      seenBatches.push([...noteIds]);
+      if (seenBatches.length === 1) {
+        await firstBatchBlocked;
+      }
+    };
+
+    try {
+      const firstSyncPromise = addon.hooks.onSyncing(
+        [Zotero.Items.get(noteOne.id) as Zotero.Item],
+        {
+          quiet: true,
+          skipActive: false,
+          reason: "queued-sync-first",
+        },
+      );
+
+      await waitUtilAsync(() => addon.data.sync.lock);
+
+      await addon.hooks.onSyncing([Zotero.Items.get(noteTwo.id) as Zotero.Item], {
+        quiet: true,
+        skipActive: false,
+        reason: "queued-sync-second",
+      });
+
+      await waitUtilAsync(() =>
+        Boolean(addon.data.sync.pending?.noteIds.includes(noteTwo.id)),
+      );
+
+      releaseFirstBatch?.();
+      await firstSyncPromise;
+    } finally {
+      addon.api.$export.syncMDBatch = originalSyncMDBatch;
+      addon.api.sync.removeSyncNote(noteOne.id);
+      addon.api.sync.removeSyncNote(noteTwo.id);
+    }
+
+    assert.deepEqual(seenBatches, [[noteOne.id], [noteTwo.id]]);
+    assert.isNull(addon.data.sync.pending);
+
+    await Zotero.Items.erase(noteOne.id);
+    await Zotero.Items.erase(noteTwo.id);
   });
 
   it("api.$export.saveMD includes managed PDF annotations", async function () {
@@ -531,6 +747,116 @@ describe("Export", function () {
       assert.notInclude(content, "> Initial annotation excerpt");
     } finally {
       mockedAnnotations.restore();
+      await Zotero.Items.erase(note.id);
+      await Zotero.Items.erase(topItem.id);
+    }
+  });
+
+  it("managed notes move to a new collection folder when collection routing changes", async function () {
+    const { topItem, note } = await createManagedObsidianNote();
+    const syncDir = await getTempDirectory();
+    const originalGetCollectionsContainingItems =
+      Zotero.Collections.getCollectionsContainingItems;
+    const originalGetByLibraryAndKey = (Zotero.Collections as any)
+      .getByLibraryAndKey;
+    const collectionLookup = new Map<string, any>();
+    const registerCollection = (collection: any) => {
+      if (!collection?.key) {
+        return;
+      }
+      collectionLookup.set(`${topItem.libraryID}/${collection.key}`, collection);
+    };
+    const setCollections = (collections: any[], parents: any[] = []) => {
+      collectionLookup.clear();
+      [...collections, ...parents].forEach(registerCollection);
+      Zotero.Collections.getCollectionsContainingItems = async () =>
+        collections as any;
+    };
+
+    setPref("obsidian.notesDir", syncDir);
+    setPref("obsidian.collectionFolderMode", "deepest");
+    setCollections(
+      [
+        {
+          key: "COLL-A",
+          name: "Neural Nets",
+          libraryID: topItem.libraryID,
+          parentKey: "ROOT-A",
+        },
+      ],
+      [
+        {
+          key: "ROOT-A",
+          name: "Projects",
+          libraryID: topItem.libraryID,
+        },
+      ],
+    );
+    (Zotero.Collections as any).getByLibraryAndKey = async (
+      libraryID: number,
+      key: string,
+    ) => collectionLookup.get(`${libraryID}/${key}`) || false;
+
+    try {
+      await addon.api.$export.syncMDBatch(syncDir, [note.id]);
+
+      const initialSyncStatus = addon.api.sync.getSyncStatus(note.id);
+      const initialFilePath = PathUtils.join(
+        initialSyncStatus.path,
+        initialSyncStatus.filename,
+      );
+
+      assert.equal(
+        initialSyncStatus.path,
+        PathUtils.join(syncDir, "Projects", "Neural Nets"),
+      );
+      assert.isTrue(await IOUtils.exists(initialFilePath));
+
+      setCollections(
+        [
+          {
+            key: "COLL-B",
+            name: "Computer Vision",
+            libraryID: topItem.libraryID,
+            parentKey: "ROOT-A",
+          },
+        ],
+        [
+          {
+            key: "ROOT-A",
+            name: "Projects",
+            libraryID: topItem.libraryID,
+          },
+        ],
+      );
+
+      await addon.hooks.onSyncing([Zotero.Items.get(note.id) as Zotero.Item], {
+        quiet: true,
+        skipActive: false,
+        reason: "collection-item",
+      });
+
+      const updatedSyncStatus = addon.api.sync.getSyncStatus(note.id);
+      const updatedFilePath = PathUtils.join(
+        updatedSyncStatus.path,
+        updatedSyncStatus.filename,
+      );
+
+      assert.notEqual(
+        updatedSyncStatus.managedSourceHash,
+        initialSyncStatus.managedSourceHash,
+      );
+      assert.equal(
+        updatedSyncStatus.path,
+        PathUtils.join(syncDir, "Projects", "Computer Vision"),
+      );
+      assert.isTrue(await IOUtils.exists(updatedFilePath));
+      assert.isFalse(await IOUtils.exists(initialFilePath));
+    } finally {
+      Zotero.Collections.getCollectionsContainingItems =
+        originalGetCollectionsContainingItems;
+      (Zotero.Collections as any).getByLibraryAndKey =
+        originalGetByLibraryAndKey;
       await Zotero.Items.erase(note.id);
       await Zotero.Items.erase(topItem.id);
     }

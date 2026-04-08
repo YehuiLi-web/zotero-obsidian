@@ -10,6 +10,7 @@ export const OBSIDIAN_APP_PATH_INPUT_ID = `${config.addonRef}-obsidian-appPath`;
 export const OBSIDIAN_VAULT_ROOT_INPUT_ID = `${config.addonRef}-obsidian-vaultRoot`;
 export const OBSIDIAN_NOTES_DIR_INPUT_ID = `${config.addonRef}-obsidian-notesDir`;
 export const OBSIDIAN_ASSETS_DIR_INPUT_ID = `${config.addonRef}-obsidian-assetsDir`;
+export const OBSIDIAN_COLLECTION_FOLDERS_INPUT_ID = `${config.addonRef}-obsidian-collectionFolders`;
 export const OBSIDIAN_AUTO_SYNC_INPUT_ID = `${config.addonRef}-obsidian-autoSync`;
 export const OBSIDIAN_WATCH_FILES_INPUT_ID = `${config.addonRef}-obsidian-watchFiles`;
 export const OBSIDIAN_REVEAL_AFTER_SYNC_INPUT_ID = `${config.addonRef}-obsidian-revealAfterSync`;

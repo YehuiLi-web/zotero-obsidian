@@ -18,6 +18,8 @@ import { cleanInline } from "../../../obsidian/shared";
 import {
   normalizeObsidianSyncScope,
   normalizeObsidianUpdateStrategy,
+  serializeObsidianPathPref,
+  OBSIDIAN_COLLECTION_FOLDER_MODE_PREF,
   OBSIDIAN_DASHBOARD_AUTO_SETUP_INPUT_ID,
   OBSIDIAN_DASHBOARD_AUTO_SETUP_PREF,
   OBSIDIAN_DASHBOARD_DIR_INPUT_ID,
@@ -48,6 +50,7 @@ import {
   OBSIDIAN_APP_PATH_INPUT_ID,
   OBSIDIAN_ASSETS_DIR_INPUT_ID,
   OBSIDIAN_AUTO_SYNC_INPUT_ID,
+  OBSIDIAN_COLLECTION_FOLDERS_INPUT_ID,
   OBSIDIAN_CONNECTION_TEST_BUTTON_ID,
   OBSIDIAN_NOTES_DIR_INPUT_ID,
   OBSIDIAN_OPEN_AFTER_SYNC_INPUT_ID,
@@ -235,12 +238,8 @@ export function bindObsidianPrefsEvents(
     const persist = () => {
       const normalized = formatPath(input.value);
       const defaultValue = getDefaultValue();
-      if (!cleanInline(normalized) || normalized === defaultValue) {
-        setPref(prefKey, "");
-        input.value = defaultValue;
-      } else {
-        setPref(prefKey, normalized);
-      }
+      setPref(prefKey, serializeObsidianPathPref(normalized, defaultValue));
+      input.value = cleanInline(normalized) ? normalized : defaultValue;
       onChange?.();
     };
     input.addEventListener("change", persist);
@@ -385,6 +384,19 @@ export function bindObsidianPrefsEvents(
       markPreviewStale();
     },
   );
+  const collectionFoldersInput = getPrefElement<HTMLInputElement>(
+    OBSIDIAN_COLLECTION_FOLDERS_INPUT_ID,
+  );
+  if (collectionFoldersInput) {
+    collectionFoldersInput.addEventListener("change", () => {
+      setPref(
+        OBSIDIAN_COLLECTION_FOLDER_MODE_PREF,
+        collectionFoldersInput.checked ? "deepest" : "none",
+      );
+      renderSyncSummary();
+      markPreviewStale();
+    });
+  }
   bindPathInput(
     OBSIDIAN_DASHBOARD_DIR_INPUT_ID,
     OBSIDIAN_DASHBOARD_DIR_PREF,
@@ -637,7 +649,7 @@ export function bindObsidianPrefsEvents(
         if (!url) {
           return;
         }
-        const launchURL = (Zotero as any).launchURL;
+        const launchURL = Zotero.launchURL;
         if (typeof launchURL === "function") {
           launchURL.call(Zotero, url);
           return;

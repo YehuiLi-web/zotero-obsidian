@@ -1,8 +1,12 @@
 import { showHintWithLink } from "../../utils/hint";
 import { getPref } from "../../utils/prefs";
 import { fileExists, formatPath, jointPath } from "../../utils/str";
+import type { ObsidianSettings } from "../obsidian/types";
 import { rememberWatchedFileState } from "../sync/watcher";
-import { normalizeFrontmatterObject } from "../obsidian/frontmatter";
+import {
+  isManagedFrontmatterBridge,
+  normalizeFrontmatterObject,
+} from "../obsidian/frontmatter";
 import {
   rememberManagedResolvedPath,
   resolveManagedSyncTargetPath,
@@ -11,7 +15,6 @@ import {
   GENERATED_BLOCK_START,
   USER_BLOCK_START,
 } from "../obsidian/markdown";
-import { cleanInline } from "../obsidian/shared";
 
 function getManagedObsidianUpdateStrategy() {
   const value = String(getPref("obsidian.updateStrategy") || "").trim();
@@ -19,6 +22,51 @@ function getManagedObsidianUpdateStrategy() {
     return value;
   }
   return "managed";
+}
+
+function getCurrentNoteSnapshotMd5(note: number | Zotero.Item) {
+  const noteStatus = addon.api.sync.getNoteStatus(note);
+  const snapshot = noteStatus
+    ? `${noteStatus.meta}${noteStatus.content}${noteStatus.tail}`
+    : typeof note === "number"
+      ? ""
+      : note.getNote();
+  return Zotero.Utilities.Internal.md5(snapshot, false);
+}
+
+function buildExportSyncStatus(
+  noteItem: Zotero.Item,
+  filePath: string,
+  mdStatus: MDStatus,
+  options: {
+    managedSourceHash?: string;
+    noteSnapshotMd5?: string;
+    fileLastModified?: number;
+    lastsync?: number;
+  } = {},
+): SyncStatus {
+  const targetPath = formatPath(filePath);
+  return {
+    path: formatPath(PathUtils.parent(targetPath) || ""),
+    filename: PathUtils.filename(targetPath),
+    itemID: noteItem.id,
+    md5: Zotero.Utilities.Internal.md5(mdStatus.content, false),
+    noteMd5: options.noteSnapshotMd5 || getCurrentNoteSnapshotMd5(noteItem.id),
+    frontmatterMd5: mdStatus.meta
+      ? Zotero.Utilities.Internal.md5(JSON.stringify(mdStatus.meta), false)
+      : "",
+    managedSourceHash: options.managedSourceHash || "",
+    fileLastModified: Number(options.fileLastModified || Date.now()),
+    lastsync: Number(options.lastsync || Date.now()),
+  };
+}
+
+async function resolveNoteItemForExport(noteId: number) {
+  const cachedItem = Zotero.Items.get(noteId);
+  if (cachedItem?.isNote()) {
+    return cachedItem as Zotero.Item;
+  }
+  return await Zotero.Items.getAsync(noteId);
 }
 
 async function shouldUseManagedObsidianExport(
@@ -40,10 +88,11 @@ async function shouldUseManagedObsidianExport(
   }
   const mdStatus = await addon.api.sync.getMDStatus(targetPath);
   const normalizedMeta = normalizeFrontmatterObject(mdStatus.meta);
-  const topItemKey = cleanInline(String(normalizedMeta.zotero_key || ""));
   if (
-    normalizedMeta.bridge_managed &&
-    (!topItemKey || topItemKey === topItem.key)
+    isManagedFrontmatterBridge(normalizedMeta, {
+      zoteroKey: topItem.key,
+      noteKey: noteItem.key,
+    })
   ) {
     return true;
   }
@@ -92,9 +141,10 @@ export async function saveMD(
     attachmentFolder?: string;
     recordHistory?: boolean;
     historyReason?: string;
+    managedSettings?: Partial<ObsidianSettings> | null;
   } = {},
 ) {
-  const noteItem = Zotero.Items.get(noteId);
+  const noteItem = await resolveNoteItemForExport(noteId);
   const dir = jointPath(...PathUtils.split(formatPath(filename)).slice(0, -1));
   await Zotero.File.createDirectoryIfMissingAsync(dir);
   const attachmentDir =
@@ -144,31 +194,24 @@ export async function saveMD(
   await Zotero.File.putContentsAsync(filename, content);
   const fileStat = await IOUtils.stat(filename);
   const exportedMDStatus = addon.api.sync.getMDStatusFromContent(content);
-  addon.api.sync.updateSyncStatus(noteItem.id, {
-    path: dir,
-    filename: PathUtils.split(filename).pop() || "",
-    itemID: noteItem.id,
-    md5: Zotero.Utilities.Internal.md5(
-      exportedMDStatus.content,
-      false,
-    ),
-    noteMd5: Zotero.Utilities.Internal.md5(noteItem.getNote(), false),
-    frontmatterMd5: exportedMDStatus.meta
-      ? Zotero.Utilities.Internal.md5(
-          JSON.stringify(exportedMDStatus.meta),
-          false,
-        )
-      : "",
-    managedSourceHash,
-    fileLastModified: Number(fileStat.lastModified || Date.now()),
-    lastsync: new Date().getTime(),
-  });
+  const fileLastModified = Number(fileStat.lastModified || Date.now());
+  addon.api.sync.updateSyncStatus(
+    noteItem.id,
+    buildExportSyncStatus(noteItem, filename, exportedMDStatus, {
+      managedSourceHash,
+      fileLastModified,
+      lastsync: Date.now(),
+    }),
+  );
   if (useManagedExport) {
     await rememberManagedResolvedPath(noteItem, filename, {
-      refreshSyncStatus: true,
+      settings: options.managedSettings,
+      refreshSyncStatus: false,
+      frontmatterMeta: exportedMDStatus.meta,
+      fileLastModified,
     });
   }
-  rememberWatchedFileState(noteItem.id, Number(fileStat.lastModified || Date.now()));
+  rememberWatchedFileState(noteItem.id, fileLastModified);
   if (options.recordHistory !== false) {
     addon.api.sync.recordMarkdownHistory(noteItem, filename, {
       beforeContent: previousContent,
@@ -194,9 +237,18 @@ export async function syncMDBatch(
     historyReason?: string;
     historyAction?: SyncHistoryEntry["action"];
     targetFiles?: string[];
+    noteItems?: Zotero.Item[];
+    managedSettings?: Partial<ObsidianSettings> | null;
+    managedSourceHashes?: Record<number, string>;
+    noteSnapshotMd5s?: Record<number, string>;
   } = {},
 ) {
-  const noteItems = Zotero.Items.get(noteIds);
+  const noteItems =
+    options.noteItems?.length === noteIds.length
+      ? options.noteItems
+      : await Promise.all(
+          noteIds.map((noteId) => resolveNoteItemForExport(noteId)),
+        );
   const normalizedSaveDir = formatPath(saveDir);
   const ensuredDirs = new Set<string>();
   const ensureDir = async (dir: string) => {
@@ -231,10 +283,7 @@ export async function syncMDBatch(
     let targetDir = normalizedSaveDir;
     const isManagedNote = addon.api.obsidian.isManagedNote(noteItem);
     let managedResolverSettings:
-      | {
-          notesDir: string;
-          vaultRoot: string;
-        }
+      | Partial<ObsidianSettings>
       | undefined;
     let managedResolution:
       | Awaited<ReturnType<typeof resolveManagedSyncTargetPath>>
@@ -245,9 +294,15 @@ export async function syncMDBatch(
       const explicitDir = formatPath(PathUtils.parent(filePath) || "");
       targetDir = explicitDir || normalizedSaveDir;
       await ensureDir(targetDir);
+      if (isManagedNote) {
+        managedResolverSettings = options.managedSettings || {
+          notesDir: configuredNotesDir || normalizedSaveDir,
+          vaultRoot: configuredVaultRoot,
+        };
+      }
     } else if (isManagedNote) {
-      managedResolverSettings = {
-        notesDir: normalizedSaveDir || configuredNotesDir,
+      managedResolverSettings = options.managedSettings || {
+        notesDir: configuredNotesDir || normalizedSaveDir,
         vaultRoot: configuredVaultRoot,
       };
       managedResolution = await resolveManagedSyncTargetPath(
@@ -312,38 +367,32 @@ export async function syncMDBatch(
         attachmentFolder,
       }));
     const managedSourceHash = useManagedExport
-      ? await addon.api.obsidian.getManagedSourceHash(noteItem)
+      ? (options.managedSourceHashes?.[noteItem.id] ||
+        (await addon.api.obsidian.getManagedSourceHash(noteItem)))
       : "";
     await Zotero.File.putContentsAsync(filePath, content);
     const fileStat = await IOUtils.stat(filePath);
     const batchMDStatus = addon.api.sync.getMDStatusFromContent(content);
-    addon.api.sync.updateSyncStatus(noteItem.id, {
-      path: targetDir,
-      filename,
-      itemID: noteItem.id,
-      md5: Zotero.Utilities.Internal.md5(
-        batchMDStatus.content,
-        false,
-      ),
-      noteMd5: Zotero.Utilities.Internal.md5(noteItem.getNote(), false),
-      frontmatterMd5: batchMDStatus.meta
-        ? Zotero.Utilities.Internal.md5(
-            JSON.stringify(batchMDStatus.meta),
-            false,
-          )
-        : "",
-      managedSourceHash,
-      fileLastModified: Number(fileStat.lastModified || Date.now()),
-      lastsync: new Date().getTime(),
-    });
+    const fileLastModified = Number(fileStat.lastModified || Date.now());
+    addon.api.sync.updateSyncStatus(
+      noteItem.id,
+      buildExportSyncStatus(noteItem, filePath, batchMDStatus, {
+        managedSourceHash,
+        noteSnapshotMd5: options.noteSnapshotMd5s?.[noteItem.id],
+        fileLastModified,
+        lastsync: Date.now(),
+      }),
+    );
     if (useManagedExport) {
       await rememberManagedResolvedPath(noteItem, filePath, {
         settings: managedResolverSettings,
         pathMode: managedResolution?.pathMode,
-        refreshSyncStatus: true,
+        refreshSyncStatus: false,
+        frontmatterMeta: batchMDStatus.meta,
+        fileLastModified,
       });
     }
-    rememberWatchedFileState(noteItem.id, Number(fileStat.lastModified || Date.now()));
+    rememberWatchedFileState(noteItem.id, fileLastModified);
     if (options.recordHistory !== false) {
       addon.api.sync.recordMarkdownHistory(noteItem, filePath, {
         beforeContent: previousContent,

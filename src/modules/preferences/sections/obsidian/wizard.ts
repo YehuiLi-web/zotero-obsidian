@@ -2,6 +2,7 @@
 // Handles vault auto-detection and the guided setup wizard flow.
 
 import { showHint } from "../../../../utils/hint";
+import { getErrorMessage, reportError } from "../../../../utils/errorUtils";
 import { getPref, setPref } from "../../../../utils/prefs";
 import {
   DEFAULT_OBSIDIAN_ITEM_TEMPLATE,
@@ -252,13 +253,17 @@ export async function runObsidianSetupWizard(
         ),
       );
     } catch (error) {
-      showHint(
-        cleanInline((error as Error)?.message || "") ||
+      reportError("Obsidian setup wizard connection test", error, {
+        hint: true,
+        hintText: getErrorMessage(
+          error,
           uiText(
             "配置已保存，但连接测试失败，请检查路径和权限。",
             "Setup was saved, but the connection test failed. Check the paths and permissions.",
           ),
-      );
+        ),
+        includeContextInHint: false,
+      });
     }
 
     return true;
@@ -273,12 +278,12 @@ export async function maybeAutoRunObsidianSetupWizard(
   win?: _ZoteroTypes.MainWindow | null,
 ) {
   const normalizedProfileDir = cleanInline(
-    String((Zotero as any).profileDir || ""),
+    String(Zotero.profileDir || ""),
   )
     .replace(/\\/g, "/")
     .toLowerCase();
   if (
-    (Zotero as any).automatedTest ||
+    Zotero.automatedTest ||
     normalizedProfileDir.includes("/.scaffold/test/profile")
   ) {
     return false;

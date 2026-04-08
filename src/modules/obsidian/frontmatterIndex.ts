@@ -1,7 +1,11 @@
 import { fileExists, formatPath } from "../../utils/str";
-import { safeLog } from "../../utils/log";
+import { logError } from "../../utils/errorUtils";
 import { readManagedFrontmatterIdentity } from "./frontmatterScanner";
-import { normalizeFrontmatterObject } from "./frontmatter";
+import {
+  getManagedFrontmatterBridge,
+  normalizeFrontmatterObject,
+  resolveManagedFrontmatterLibraryID,
+} from "./frontmatter";
 import { cleanInline, firstValue } from "./shared";
 import { OBSIDIAN_FRONTMATTER_INDEX_FILE_NAME } from "./constants";
 import {
@@ -139,7 +143,7 @@ function scheduleFrontmatterIndexSave() {
         getSerializedIndex(),
       );
     } catch (error) {
-      safeLog("[ObsidianBridge] failed to persist frontmatter index", error);
+      logError("Persist frontmatter index", error);
     }
   }, 1000);
 }
@@ -180,10 +184,7 @@ async function loadFrontmatterIndexFile() {
         frontmatterIndex = {};
       }
     } catch (error) {
-      safeLog(
-        "[ObsidianBridge] failed to load frontmatter index from disk",
-        error,
-      );
+      logError("Load frontmatter index from disk", error);
       frontmatterIndex = {};
     } finally {
       rebuildLookups();
@@ -210,6 +211,7 @@ function buildIndexEntryFromMeta(
   mtime = Date.now(),
 ): FrontmatterIndexEntry | null {
   const normalizedMeta = normalizeFrontmatterObject(meta);
+  const bridge = getManagedFrontmatterBridge(normalizedMeta);
   const citekey = cleanInline(
     String(
       firstValue(
@@ -219,32 +221,12 @@ function buildIndexEntryFromMeta(
       ) || "",
     ),
   );
-  const zoteroKey = cleanInline(
-    String(
-      firstValue(
-        normalizedMeta.zotero_key,
-        normalizedMeta.$itemKey,
-        normalizedMeta.item_key,
-      ) || "",
-    ),
-  );
-  const noteKey = cleanInline(
-    String(
-      firstValue(
-        normalizedMeta.zotero_note_key,
-        normalizedMeta.$noteKey,
-        normalizedMeta.$itemKey,
-      ) || "",
-    ),
-  );
-  const libraryIDRaw = Number(
-    firstValue(
-      normalizedMeta.$libraryID,
-      normalizedMeta.libraryID,
-      normalizedMeta.library_id,
-    ) || 0,
-  );
-  const libraryID = Number.isFinite(libraryIDRaw) ? libraryIDRaw : 0;
+  const zoteroKey = bridge.zoteroKey;
+  const noteKey = bridge.noteKey;
+  const libraryID = resolveManagedFrontmatterLibraryID(normalizedMeta, {
+    zoteroKey,
+    noteKey,
+  });
   if (!citekey && (!libraryID || !zoteroKey)) {
     return null;
   }
@@ -365,11 +347,7 @@ async function extractEntryFromFile(filePath: string) {
     deleteFrontmatterIndexEntry(filePath);
     return null;
   } catch (error) {
-    safeLog(
-      "[ObsidianBridge] failed to read frontmatter while indexing",
-      filePath,
-      error,
-    );
+    logError("Read frontmatter while indexing", error, filePath);
     return null;
   }
 }

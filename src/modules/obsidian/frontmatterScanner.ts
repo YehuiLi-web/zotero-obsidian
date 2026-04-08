@@ -1,6 +1,11 @@
-import { safeLog } from "../../utils/log";
+import { logError } from "../../utils/errorUtils";
 import { fileExists, formatPath } from "../../utils/str";
-import { normalizeFrontmatterObject, parseMarkdownFrontmatter } from "./frontmatter";
+import {
+  getManagedFrontmatterBridge,
+  normalizeFrontmatterObject,
+  parseMarkdownFrontmatter,
+  resolveManagedFrontmatterLibraryID,
+} from "./frontmatter";
 import { cleanInline, firstValue } from "./shared";
 
 type ManagedFrontmatterIdentity = {
@@ -35,9 +40,8 @@ const MARKDOWN_REGEX = /\.(md|MD|Md|mD)$/;
 
 async function readMarkdownHead(filePath: string) {
   try {
-    const ioUtils = IOUtils as any;
-    if (typeof ioUtils.readUTF8 === "function") {
-      const partial = await ioUtils.readUTF8(filePath, {
+    if (typeof IOUtils.readUTF8 === "function") {
+      const partial = await IOUtils.readUTF8(filePath, {
         maxBytes: SCAN_HEAD_MAX_BYTES,
       });
       if (typeof partial === "string") {
@@ -45,14 +49,14 @@ async function readMarkdownHead(filePath: string) {
       }
     }
   } catch (error) {
-    safeLog("[ObsidianBridge] partial frontmatter read failed", filePath, error);
+    logError("Partial frontmatter read", error, filePath);
   }
 
   try {
     const raw = await Zotero.File.getContentsAsync(filePath, "utf-8");
     return String(raw || "").slice(0, SCAN_HEAD_MAX_BYTES);
   } catch (error) {
-    safeLog("[ObsidianBridge] failed to read markdown head", filePath, error);
+    logError("Read markdown head", error, filePath);
     return "";
   }
 }
@@ -61,32 +65,11 @@ function getManagedFrontmatterIdentity(
   meta: Record<string, any> | null | undefined,
 ): ManagedFrontmatterIdentity | null {
   const normalizedMeta = normalizeFrontmatterObject(meta);
-  const libraryIDRaw = Number(
-    firstValue(
-      normalizedMeta.$libraryID,
-      normalizedMeta.libraryID,
-      normalizedMeta.library_id,
-    ) || 0,
-  );
-  const libraryID = Number.isFinite(libraryIDRaw) ? libraryIDRaw : 0;
-  const zoteroKey = cleanInline(
-    String(
-      firstValue(
-        normalizedMeta.zotero_key,
-        normalizedMeta.$itemKey,
-        normalizedMeta.item_key,
-      ) || "",
-    ),
-  );
-  const noteKey = cleanInline(
-    String(
-      firstValue(
-        normalizedMeta.zotero_note_key,
-        normalizedMeta.$noteKey,
-        normalizedMeta.note_key,
-      ) || "",
-    ),
-  );
+  const bridge = getManagedFrontmatterBridge(normalizedMeta);
+  const libraryID = resolveManagedFrontmatterLibraryID(normalizedMeta, {
+    zoteroKey: bridge.zoteroKey,
+    noteKey: bridge.noteKey,
+  });
   const citekey = cleanInline(
     String(
       firstValue(
@@ -96,15 +79,15 @@ function getManagedFrontmatterIdentity(
       ) || "",
     ),
   );
-  if (!libraryID || (!zoteroKey && !noteKey && !citekey)) {
+  if (!libraryID || (!bridge.zoteroKey && !bridge.noteKey && !citekey)) {
     return null;
   }
   return {
     libraryID,
-    zoteroKey,
-    noteKey,
+    zoteroKey: bridge.zoteroKey,
+    noteKey: bridge.noteKey,
     citekey,
-    bridgeManaged: Boolean(normalizedMeta.bridge_managed),
+    bridgeManaged: bridge.isManaged,
   };
 }
 
@@ -131,7 +114,7 @@ async function readManagedFrontmatterIdentity(filePath: string) {
       meta,
     } as ManagedFrontmatterFileMatch;
   } catch (error) {
-    safeLog("[ObsidianBridge] failed to stat markdown file", normalizedPath, error);
+    logError("Stat markdown file", error, normalizedPath);
     return {
       ...identity,
       path: normalizedPath,

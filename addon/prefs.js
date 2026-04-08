@@ -16,9 +16,10 @@ pref(
 pref("__prefsPrefix__.obsidian.fileNameTemplate", "{{title}} -- {{uniqueKey}}");
 pref("__prefsPrefix__.obsidian.syncScope", "selection");
 pref("__prefsPrefix__.obsidian.updateStrategy", "managed");
+pref("__prefsPrefix__.obsidian.collectionFolderMode", "none");
 pref(
   "__prefsPrefix__.obsidian.frontmatterFields",
-  '["titleTranslation","itemType","date","doi","citationKey","publication","itemLink","pdfLink","authors","collections","zoteroTags","rating"]',
+  '["title","titleTranslation","aliases","itemType","date","doi","readingStatus","citationKey","publication","itemLink","pdfLink","authors","collections","obsidianTags","zoteroTags","rating"]',
 );
 pref("__prefsPrefix__.obsidian.autoSync", true);
 pref("__prefsPrefix__.obsidian.watchFiles", true);
@@ -37,10 +38,7 @@ pref("__prefsPrefix__.obsidian.metadataPreset", "");
 pref("__prefsPrefix__.obsidian.metadataPresetLibrary", "");
 pref("__prefsPrefix__.obsidian.metadataPresetActive", "");
 pref("__prefsPrefix__.obsidian.itemNoteMap", "");
-pref(
-  "__prefsPrefix__.obsidian.bridgeChildNoteTags",
-  "AI 文献解读, AI文献解读, AI 解读, AI 文献阅读, AI文献阅读, 🤖️/AI, 🤖️/AI文献解读, 🤖️/AI文献阅读",
-);
+pref("__prefsPrefix__.obsidian.bridgeChildNoteTags", "");
 pref("__prefsPrefix__.obsidian.bridgeChildNotePromptSelect", true);
 pref("__prefsPrefix__.obsidian.bridgeChildNoteExcludeMap", "");
 

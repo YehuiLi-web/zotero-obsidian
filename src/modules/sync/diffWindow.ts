@@ -34,6 +34,8 @@ export async function showSyncDiff(noteId: number, mdPath: string) {
     syncInfo: {},
     diffData: [] as Change[],
     imageData: {},
+    noteText: "",
+    mdText: "",
   };
 
   if (!(noteStatus.lastmodify > syncDate && mdStatus.lastmodify > syncDate)) {
@@ -74,6 +76,8 @@ export async function showSyncDiff(noteId: number, mdPath: string) {
       mdModify: mdStatus.lastmodify && mdStatus.lastmodify.toISOString(),
       syncTime: syncDate.toISOString(),
     };
+    io.noteText = noteContent;
+    io.mdText = mdNoteContent;
     io.diffData = changes.map((change, id) =>
       Object.assign(change, {
         id: id,

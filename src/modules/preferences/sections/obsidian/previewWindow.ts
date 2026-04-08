@@ -649,7 +649,7 @@ async function mountPreviewWindow(
     }
     event.preventDefault();
     try {
-      Zotero.launchURL(link.href);
+      Zotero.launchURL?.(link.href);
     } catch (error) {
       ztoolkit.log("[obsidian preview] open link failed", link.href, error);
     }

@@ -1,11 +1,12 @@
 import { getPref, setPref } from "../../../../../utils/prefs";
-import { formatPath } from "../../../../../utils/str";
 import {
   DEFAULT_OBSIDIAN_ITEM_TEMPLATE,
-  deriveObsidianPathDefaults,
   detectObsidianVaults,
   getBooleanPrefOrDefault,
   isObsidianVaultDirectory,
+  normalizeObsidianPathInput,
+  resolveObsidianPaths,
+  serializeObsidianPathPref,
   type ObsidianDetectedVault,
   OBSIDIAN_DASHBOARD_AUTO_SETUP_PREF,
   OBSIDIAN_DASHBOARD_DIR_PREF,
@@ -21,7 +22,7 @@ export function getObsidianPromptWindow(preferredWindow?: Window | null) {
 }
 
 function getPromptDefaultFlag(index = 0) {
-  const prompt = Services.prompt as any;
+  const prompt = Services.prompt;
   switch (index) {
     case 1:
       return prompt.BUTTON_POS_1_DEFAULT || 0;
@@ -39,16 +40,18 @@ export function promptChoice(options: {
   defaultButton?: number;
   window?: Window | null;
 }) {
-  const prompt = Services.prompt as any;
+  const prompt = Services.prompt;
   const buttonFlags =
     options.buttons.reduce((flags, _label, index) => {
-      const posKey = `BUTTON_POS_${index}`;
+      const posKey = `BUTTON_POS_${index}` as keyof typeof prompt;
       return (
-        flags + (prompt[posKey] || 0) * (prompt.BUTTON_TITLE_IS_STRING || 0)
+        flags +
+        ((prompt[posKey] as number) || 0) *
+          (prompt.BUTTON_TITLE_IS_STRING || 0)
       );
     }, 0) + getPromptDefaultFlag(options.defaultButton || 0);
   return prompt.confirmEx(
-    getObsidianPromptWindow(options.window) as any,
+    getObsidianPromptWindow(options.window),
     options.title,
     options.text,
     buttonFlags,
@@ -67,7 +70,7 @@ export function promptSelectIndex(options: {
   defaultIndex?: number;
   window?: Window | null;
 }) {
-  const prompt = Services.prompt as any;
+  const prompt = Services.prompt;
   if (!options.labels.length) {
     return null;
   }
@@ -79,7 +82,7 @@ export function promptSelectIndex(options: {
   }
   const selected = { value: options.defaultIndex || 0 };
   const accepted = prompt.select(
-    getObsidianPromptWindow(options.window) as any,
+    getObsidianPromptWindow(options.window),
     options.title,
     options.text,
     options.labels.length,
@@ -103,7 +106,7 @@ export async function pickObsidianFolderManually(
     "all",
     currentValue || undefined,
   ).open();
-  return selection ? formatPath(selection) : "";
+  return selection ? normalizeObsidianPathInput(selection) : "";
 }
 
 export async function confirmObsidianVaultRoot(
@@ -127,19 +130,12 @@ export async function confirmObsidianVaultRoot(
 }
 
 export function buildCurrentObsidianSetupDraft(): ObsidianSetupDraft {
-  const vaultRoot = cleanInline(String(getPref("obsidian.vaultRoot") || ""));
-  const defaults = deriveObsidianPathDefaults(vaultRoot);
+  const resolvedPaths = resolveObsidianPaths();
   return {
-    vaultRoot,
-    notesDir:
-      cleanInline(String(getPref("obsidian.notesDir") || "")) ||
-      defaults.notesDir,
-    assetsDir:
-      cleanInline(String(getPref("obsidian.assetsDir") || "")) ||
-      defaults.assetsDir,
-    dashboardDir:
-      cleanInline(String(getPref(OBSIDIAN_DASHBOARD_DIR_PREF) || "")) ||
-      defaults.dashboardDir,
+    vaultRoot: resolvedPaths.vaultRoot,
+    notesDir: resolvedPaths.notesDir,
+    assetsDir: resolvedPaths.assetsDir,
+    dashboardDir: resolvedPaths.dashboardDir,
     dashboardAutoSetup: getBooleanPrefOrDefault(
       OBSIDIAN_DASHBOARD_AUTO_SETUP_PREF,
       true,
@@ -153,14 +149,7 @@ export function setPathPrefWithDefault(
   value: string,
   defaultValue: string,
 ) {
-  const normalizedValue = formatPath(cleanInline(value));
-  const normalizedDefault = formatPath(cleanInline(defaultValue));
-  setPref(
-    prefKey,
-    normalizedValue && normalizedValue !== normalizedDefault
-      ? normalizedValue
-      : "",
-  );
+  setPref(prefKey, serializeObsidianPathPref(value, defaultValue));
 }
 
 export function applyObsidianSetupDraft(
@@ -168,44 +157,45 @@ export function applyObsidianSetupDraft(
   options: { overwriteExisting?: boolean } = {},
 ) {
   const overwriteExisting = options.overwriteExisting ?? true;
-  const defaults = deriveObsidianPathDefaults(draft.vaultRoot);
-  const currentNotesPref = cleanInline(
-    String(getPref("obsidian.notesDir") || ""),
-  );
-  const currentAssetsPref = cleanInline(
-    String(getPref("obsidian.assetsDir") || ""),
-  );
-  const currentDashboardPref = cleanInline(
-    String(getPref(OBSIDIAN_DASHBOARD_DIR_PREF) || ""),
-  );
+  const currentPaths = resolveObsidianPaths();
+  const draftPaths = resolveObsidianPaths({
+    vaultRoot: draft.vaultRoot,
+    notesDirPref: draft.notesDir,
+    assetsDirPref: draft.assetsDir,
+    dashboardDirPref: draft.dashboardDir,
+  });
   const nextNotesDir =
-    formatPath(cleanInline(draft.notesDir)) ||
-    (overwriteExisting || !currentNotesPref
-      ? defaults.notesDir
-      : currentNotesPref);
+    normalizeObsidianPathInput(draft.notesDir) ||
+    (overwriteExisting || !currentPaths.notesDirPref
+      ? draftPaths.defaults.notesDir
+      : currentPaths.notesDirPref);
   const nextAssetsDir =
-    formatPath(cleanInline(draft.assetsDir)) ||
-    (overwriteExisting || !currentAssetsPref
-      ? defaults.assetsDir
-      : currentAssetsPref);
+    normalizeObsidianPathInput(draft.assetsDir) ||
+    (overwriteExisting || !currentPaths.assetsDirPref
+      ? draftPaths.defaults.assetsDir
+      : currentPaths.assetsDirPref);
   const nextDashboardDir =
-    formatPath(cleanInline(draft.dashboardDir)) ||
-    (overwriteExisting || !currentDashboardPref
-      ? defaults.dashboardDir
-      : currentDashboardPref);
+    normalizeObsidianPathInput(draft.dashboardDir) ||
+    (overwriteExisting || !currentPaths.dashboardDirPref
+      ? draftPaths.defaults.dashboardDir
+      : currentPaths.dashboardDirPref);
 
-  setPref("obsidian.vaultRoot", defaults.vaultRoot);
-  setPref("obsidian.vaultName", defaults.vaultName);
-  setPathPrefWithDefault("obsidian.notesDir", nextNotesDir, defaults.notesDir);
+  setPref("obsidian.vaultRoot", draftPaths.defaults.vaultRoot);
+  setPref("obsidian.vaultName", draftPaths.defaults.vaultName);
+  setPathPrefWithDefault(
+    "obsidian.notesDir",
+    nextNotesDir,
+    draftPaths.defaults.notesDir,
+  );
   setPathPrefWithDefault(
     "obsidian.assetsDir",
     nextAssetsDir,
-    defaults.assetsDir,
+    draftPaths.defaults.assetsDir,
   );
   setPathPrefWithDefault(
     OBSIDIAN_DASHBOARD_DIR_PREF,
     nextDashboardDir,
-    defaults.dashboardDir,
+    draftPaths.defaults.dashboardDir,
   );
   setPref(
     OBSIDIAN_DASHBOARD_AUTO_SETUP_PREF,

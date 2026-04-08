@@ -1,6 +1,8 @@
 import { fileExists, formatPath, jointPath } from "../../utils/str";
+import { isElementVisible } from "../../utils/window";
 import { getString } from "../../utils/locale";
 import { getPref } from "../../utils/prefs";
+import { getCollectionFolderRoutingState } from "./collectionFolders";
 import {
   ensureChildNoteHeading,
   getChildNoteBridgeConfig,
@@ -14,6 +16,7 @@ import {
   buildFrontmatter,
   buildManagedFrontmatterData,
   getManagedFrontmatterNonSystemTags,
+  isManagedFrontmatterBridge,
   mergeFrontmatterLists,
   mergeManagedFrontmatter,
   normalizeFrontmatterObject,
@@ -49,7 +52,9 @@ import {
   getManagedNoteContentConfig,
   getMetadataPreset,
   getObsidianItemNoteMap,
+  OBSIDIAN_COLLECTION_FOLDER_MODE_PREF,
   OBSIDIAN_UPDATE_STRATEGY_PREF,
+  normalizeObsidianCollectionFolderMode,
   normalizeObsidianUpdateStrategy,
 } from "./settings";
 import {
@@ -234,11 +239,12 @@ function findManagedTopItemFromMeta(
     return false;
   }
   const normalizedMeta = normalizeFrontmatterObject(meta);
-  if (!normalizedMeta.bridge_managed) {
-    return false;
-  }
-  const topItemKey = cleanInline(String(normalizedMeta.zotero_key || ""));
-  if (topItemKey && topItemKey !== topItem.key) {
+  if (
+    !isManagedFrontmatterBridge(normalizedMeta, {
+      zoteroKey: topItem.key,
+      noteKey: noteItem.key,
+    })
+  ) {
     return false;
   }
   return topItem;
@@ -677,6 +683,12 @@ async function getManagedObsidianSourceHash(noteItem: Zotero.Item) {
   const updateStrategy = normalizeObsidianUpdateStrategy(
     String(getPref(OBSIDIAN_UPDATE_STRATEGY_PREF) || ""),
   );
+  const collectionFolderRouting = await getCollectionFolderRoutingState(
+    topItem,
+    normalizeObsidianCollectionFolderMode(
+      String(getPref(OBSIDIAN_COLLECTION_FOLDER_MODE_PREF) || ""),
+    ),
+  );
   const payload = {
     topItem: {
       id: topItem.id,
@@ -691,6 +703,7 @@ async function getManagedObsidianSourceHash(noteItem: Zotero.Item) {
     collectionsList: [...collectionsList]
       .map((name) => cleanInline(name))
       .sort(),
+    collectionFolderRouting,
     metadataPreset,
     frontmatterFields: getManagedFrontmatterFields(),
     visibleFields: getConfiguredFields(
@@ -773,10 +786,18 @@ async function renderManagedObsidianNoteMarkdown(
     : null;
   const syncStatus = addon.api.sync.getSyncStatus(noteItem.id);
   const currentNoteMd5 = Zotero.Utilities.Internal.md5(noteItem.getNote(), false);
+  const hasVisibleActiveEditor = Zotero.Notes._editorInstances.some((editor) => {
+    if (editor?._item?.id !== noteItem.id) {
+      return false;
+    }
+    const elem = (editor._popup as XULPopupElement)?.closest?.("note-editor");
+    return Boolean(elem && isElementVisible(elem));
+  });
   const shouldPreferNoteUserSections =
     updateStrategy === "overwrite" ||
     !existingMarkdown ||
     !existingUserSections ||
+    hasVisibleActiveEditor ||
     (addon.api.sync.isSyncNote(noteItem.id) &&
       Boolean(syncStatus.noteMd5) &&
       currentNoteMd5 !== syncStatus.noteMd5);

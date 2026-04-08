@@ -24,6 +24,7 @@ type ObsidianPrefsLayoutContext = {
   fileNameTemplate: string;
   syncScope: string;
   updateStrategy: string;
+  collectionFoldersEnabled: boolean;
   autoSync: boolean;
   watchFiles: boolean;
   openAfterSync: boolean;
@@ -56,6 +57,7 @@ type ObsidianPrefsLayoutContext = {
     vaultRootInputId: string;
     notesDirInputId: string;
     assetsDirInputId: string;
+    collectionFoldersInputId: string;
     connectionTestButtonId: string;
     connectionTestResultId: string;
     vaultRootHintId: string;
@@ -398,6 +400,22 @@ function buildObsidianConnectionPanelHTML(context: ObsidianPrefsLayoutContext) {
         }),
         hintId: ids.assetsDirHintId,
       })}
+
+      ${renderChoiceGroupHTML(context, [
+        renderChoiceLineHTML(context, {
+          inputType: "checkbox",
+          inputId: ids.collectionFoldersInputId,
+          checked: context.collectionFoldersEnabled,
+          title: context.uiText(
+            "按 Zotero collection 建子目录",
+            "Create subfolders from Zotero collections",
+          ),
+          meta: context.uiText(
+            "命中文献多个 collection 时，默认使用层级最深的一条路径。",
+            "When an item belongs to multiple collections, the deepest hierarchy is used.",
+          ),
+        }),
+      ])}
 
       <details class="ob-bridge-details">
         <summary>${context.escapeHTML(

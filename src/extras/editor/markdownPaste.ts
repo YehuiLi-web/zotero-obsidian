@@ -1,5 +1,7 @@
 import { Plugin, PluginKey } from "prosemirror-state";
 import { md2html } from "../convert";
+import { getErrorMessage, logError, reportError } from "../../utils/errorUtils";
+import { safeLog } from "../../utils/log";
 
 export { initMarkdownPastePlugin, MarkdownPasteOptions };
 
@@ -13,13 +15,13 @@ interface MarkdownPasteOptions {
 
 function initMarkdownPastePlugin(plugins: readonly Plugin[]) {
   const core = _currentEditorInstance._editorCore;
-  console.log("Init BN Markdown Paste Plugin");
+  safeLog("[ObsidianBridge] init markdown paste plugin");
   const key = new PluginKey("pasteDropPlugin");
   const oldPastePluginIndex = plugins.findIndex(
     (plugin) => plugin.props.handlePaste && plugin.props.handleDrop,
   );
   if (oldPastePluginIndex === -1) {
-    console.error("Paste plugin not found");
+    logError("Markdown paste plugin init", "Paste plugin not found");
     return plugins;
   }
   const oldPastePlugin = plugins[oldPastePluginIndex];
@@ -43,14 +45,25 @@ function initMarkdownPastePlugin(plugins: readonly Plugin[]) {
             ]);
           }
 
-          md2html(markdown).then((html: string) => {
-            const slice = window.ObsidianBridgeEditorAPI.getSliceFromHTML(
-              view.state,
-              html,
-            );
-            const tr = view.state.tr.replaceSelection(slice);
-            view.dispatch(tr);
-          });
+          void md2html(markdown)
+            .then((html: string) => {
+              const slice = window.ObsidianBridgeEditorAPI.getSliceFromHTML(
+                view.state,
+                html,
+              );
+              const tr = view.state.tr.replaceSelection(slice);
+              view.dispatch(tr);
+            })
+            .catch((error) => {
+              reportError("Markdown paste", error, {
+                hint: true,
+                hintText: getErrorMessage(
+                  error,
+                  "Failed to convert pasted Markdown.",
+                ),
+                includeContextInHint: false,
+              });
+            });
           return true;
         },
         handleDrop: (view, event, slice, moved) => {
@@ -69,22 +82,33 @@ function initMarkdownPastePlugin(plugins: readonly Plugin[]) {
             ]);
           }
 
-          md2html(markdown).then((html: string) => {
-            const slice = window.ObsidianBridgeEditorAPI.getSliceFromHTML(
-              view.state,
-              html,
-            );
-            const pos = view.posAtCoords({
-              left: event.clientX,
-              top: event.clientY,
+          void md2html(markdown)
+            .then((html: string) => {
+              const slice = window.ObsidianBridgeEditorAPI.getSliceFromHTML(
+                view.state,
+                html,
+              );
+              const pos = view.posAtCoords({
+                left: event.clientX,
+                top: event.clientY,
+              });
+              if (!pos) {
+                return;
+              }
+              // Insert the slice to the current position
+              const tr = view.state.tr.insert(pos.pos, slice);
+              view.dispatch(tr);
+            })
+            .catch((error) => {
+              reportError("Markdown drop", error, {
+                hint: true,
+                hintText: getErrorMessage(
+                  error,
+                  "Failed to convert dropped Markdown.",
+                ),
+                includeContextInHint: false,
+              });
             });
-            if (!pos) {
-              return;
-            }
-            // Insert the slice to the current position
-            const tr = view.state.tr.insert(pos.pos, slice);
-            view.dispatch(tr);
-          });
 
           return true;
         },
